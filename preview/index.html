@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>校园广播管理系统</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --primary:#1677ff;--primary-hover:#4096ff;--primary-bg:#e6f4ff;--primary-border:#91caff;
+  --success:#52c41a;--success-bg:#f6ffed;--success-border:#b7eb8f;
+  --warning:#faad14;--warning-bg:#fffbe6;--warning-border:#ffe58f;
+  --error:#ff4d4f;--error-bg:#fff2f0;--error-border:#ffccc7;
+  --bg-layout:#f0f2f5;--bg-card:#ffffff;--bg-spot:#fafafa;--bg-hover:#f5f5f5;
+  --border:#d9d9d9;--border-secondary:#f0f0f0;
+  --text-primary:rgba(0,0,0,0.88);--text-secondary:rgba(0,0,0,0.65);--text-tertiary:rgba(0,0,0,0.45);--text-quaternary:rgba(0,0,0,0.25);
+  --sidebar-bg:#001529;--sidebar-hover:rgba(255,255,255,0.08);--sidebar-active:#1677ff;
+  --sidebar-w:220px;--header-h:56px;--radius:8px;--radius-sm:6px;
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'SF Mono','Cascadia Code',Consolas,monospace;
+}
+html{font-size:14px}
+body{font-family:var(--font);background:var(--bg-layout);color:var(--text-primary);line-height:1.6;display:flex;min-height:100vh;-webkit-font-smoothing:antialiased}
+::selection{background:var(--primary);color:#fff}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#c1c1c1;border-radius:3px}
+
+.sidebar{width:var(--sidebar-w);background:var(--sidebar-bg);position:fixed;left:0;top:0;bottom:0;z-index:100;display:flex;flex-direction:column;box-shadow:2px 0 8px rgba(0,0,0,0.15)}
+.sidebar-brand{height:var(--header-h);display:flex;align-items:center;padding:0 20px;gap:12px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0}
+.sidebar-brand .logo-icon{width:32px;height:32px;border-radius:var(--radius-sm);background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sidebar-brand .logo-icon svg{width:18px;height:18px;fill:#fff}
+.sidebar-brand .brand-name{font-size:15px;font-weight:600;color:#fff}
+.sidebar-nav{flex:1;padding:12px 0;overflow-y:auto}
+.nav-group{margin-bottom:8px}
+.nav-group-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);padding:16px 24px 6px;letter-spacing:0.06em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:0 24px;height:40px;color:rgba(255,255,255,0.65);cursor:pointer;transition:all 0.2s;font-size:13.5px;margin:2px 8px;border-radius:var(--radius-sm);user-select:none}
+.nav-item:hover{color:#fff;background:var(--sidebar-hover)}
+.nav-item.active{color:#fff;background:var(--sidebar-active);font-weight:500}
+.nav-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-footer{padding:16px 24px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 6px rgba(82,196,26,0.5)}
+.status-label{font-size:12px;color:rgba(255,255,255,0.45)}
+
+.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-height:100vh}
+.header{height:var(--header-h);background:var(--bg-card);border-bottom:1px solid var(--border-secondary);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50}
+.header-title{font-size:16px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:16px}
+.header-time{font-size:13px;color:var(--text-tertiary);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.header-date{font-size:12px;color:var(--text-quaternary)}
+.ntp-badge{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500;background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
+.ntp-badge.offline{background:var(--warning-bg);color:#d48806;border-color:var(--warning-border)}
+.ntp-badge .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.content{flex:1;padding:24px;max-width:1200px;width:100%}
+
+.page{display:none}.page.active{display:block;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.card{background:var(--bg-card);border-radius:var(--radius);padding:20px 24px;margin-bottom:16px;border:1px solid var(--border-secondary)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:600}
+.card-desc{font-size:12px;color:var(--text-tertiary);margin-top:2px}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--bg-card);border-radius:var(--radius);padding:20px;border:1px solid var(--border-secondary);transition:box-shadow .2s}
+.stat-card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+.stat-icon{width:40px;height:40px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.stat-icon svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
+.stat-icon.blue{background:var(--primary-bg);color:var(--primary)}
+.stat-icon.green{background:var(--success-bg);color:var(--success)}
+.stat-icon.red{background:var(--error-bg);color:var(--error)}
+.stat-icon.orange{background:var(--warning-bg);color:var(--warning)}
+.stat-label{font-size:13px;color:var(--text-secondary);margin-bottom:4px}
+.stat-value{font-size:24px;font-weight:700;letter-spacing:-0.02em}
+.stat-sub{font-size:12px;color:var(--text-tertiary);margin-top:4px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:5px 14px;border:1px solid transparent;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;font-family:var(--font);white-space:nowrap;line-height:1.6}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-danger{background:#fff;color:var(--error);border-color:var(--error-border)}
+.btn-danger:hover{background:var(--error-bg);border-color:var(--error)}
+.btn-success{background:#fff;color:var(--success);border-color:var(--success-border)}
+.btn-success:hover{background:var(--success-bg);border-color:var(--success)}
+.btn-warning{background:#fff;color:var(--warning);border-color:var(--warning-border)}
+.btn-warning:hover{background:var(--warning-bg)}
+.btn-ghost{background:transparent;color:var(--text-secondary);border:none}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--primary)}
+.btn-outline{background:#fff;color:var(--text-secondary);border-color:var(--border)}
+.btn-outline:hover{color:var(--primary);border-color:var(--primary)}
+.btn-sm{padding:2px 8px;font-size:12px}
+
+input[type="text"],input[type="password"],input[type="time"],input[type="date"],select{padding:6px 11px;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text-primary);font-family:var(--font);transition:all .2s;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(22,119,255,0.1)}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23bfbfbf' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+
+.tag{display:inline-flex;align-items:center;padding:1px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.tag-blue{background:var(--primary-bg);color:var(--primary);border:1px solid var(--primary-border)}
+.tag-green{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
+.tag-red{background:var(--error-bg);color:var(--error);border:1px solid var(--error-border)}
+.tag-orange{background:var(--warning-bg);color:#d48806;border:1px solid var(--warning-border)}
+
+.table-wrap{border:1px solid var(--border-secondary);border-radius:var(--radius);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--bg-spot);padding:10px 16px;text-align:left;font-weight:500;font-size:12px;color:var(--text-tertiary);border-bottom:1px solid var(--border-secondary)}
+td{padding:12px 16px;border-bottom:1px solid var(--border-secondary);color:var(--text-secondary)}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:#fafafa}
+
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:6px}
+.help-block{margin-top:16px;padding:14px 16px;background:var(--bg-spot);border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);line-height:1.8;border:1px solid var(--border-secondary)}
+.help-block strong{color:var(--text-primary);font-weight:600}
+.help-block em{color:var(--primary);font-style:normal;font-weight:500}
+
+.zone-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border-secondary);gap:12px;flex-wrap:wrap}
+.zone-row:last-child{border-bottom:none}
+.zone-row .zone-info{display:flex;align-items:center;gap:10px;min-width:120px}
+.zone-row .zone-info .zname{font-weight:600;font-size:14px}
+.zone-row .zone-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.quick-row{display:flex;flex-wrap:wrap;gap:10px}
+.flex{display:flex}.gap-8{gap:8px}.gap-10{gap:10px}.items-center{align-items:center}
+.alert{padding:10px 16px;border-radius:var(--radius-sm);margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:8px}
+.alert-warning{background:var(--warning-bg);border:1px solid var(--warning-border);color:#d48806}
+.alert-error{background:var(--error-bg);border:1px solid var(--error-border);color:var(--error)}
+.switch{position:relative;width:36px;height:20px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch-track{position:absolute;cursor:pointer;inset:0;background:#bfbfbf;border-radius:10px;transition:all .2s}
+.switch-track::before{content:'';position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.switch input:checked+.switch-track{background:var(--primary)}
+.switch input:checked+.switch-track::before{transform:translateX(16px)}
+
+.toast{position:fixed;top:20px;right:20px;padding:12px 20px;background:var(--bg-card);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,0.12);border:1px solid var(--border-secondary);font-size:13px;z-index:9999;transform:translateX(120%);transition:transform .3s ease}
+.toast.show{transform:translateX(0)}
+.toast.error{border-left:3px solid var(--error);color:var(--error)}
+.toast.ok{border-left:3px solid var(--success);color:var(--success)}
+
+@media(max-width:768px){
+  .sidebar{display:none}.main{margin-left:0}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:10px}
+  .content{padding:16px}.card{padding:16px}
+  .stat-value{font-size:18px}
+  .zone-row{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div class="brand-name">校园广播</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">概览</div>
+      <div class="nav-item active" data-page="dashboard"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span>系统总览</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">管理</div>
+      <div class="nav-item" data-page="schedules"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></span><span>课表管理</span></div>
+      <div class="nav-item" data-page="zones"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M2 20h20M5 20V8l7-5 7 5v12"/><path d="M9 20v-5h6v5"/></svg></span><span>区域控制</span></div>
+      <div class="nav-item" data-page="bells"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span>铃声管理</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">配置</div>
+      <div class="nav-item" data-page="holidays"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span>节假日</span></div>
+      <div class="nav-item" data-page="settings"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span><span>系统设置</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">系统</div>
+      <div class="nav-item" data-page="logs"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span><span>运行日志</span></div>
+    </div>
+  </nav>
+  <div class="sidebar-footer"><div class="status-dot"></div><span class="status-label">系统运行中</span></div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <h1 class="header-title" id="pageTitle">系统总览</h1>
+    <div class="header-right">
+      <div class="ntp-badge" id="ntpBadge" title="NTP校时状态"><span class="dot"></span>未同步</div>
+      <span class="header-date" id="dateDisplay"></span>
+      <span class="header-time" id="clock">--:--:--</span>
+    </div>
+  </header>
+  <main class="content">
+
+    <!-- ===== 总览 ===== -->
+    <div class="page active" id="page-dashboard">
+      <div id="dashAlert"></div>
+
+      <!-- 今日状态（按区域） -->
+      <div class="card" style="border-left:4px solid var(--primary)">
+        <div class="card-header"><div><div class="card-title" style="font-size:16px">今日状态</div><div class="card-desc" id="todayDateDesc">--</div></div></div>
+        <div id="todayZoneRows"></div>
+      </div>
+
+      <!-- 明日状态（按区域） -->
+      <div class="card" style="border-left:4px solid var(--warning)">
+        <div class="card-header"><div><div class="card-title" style="font-size:16px">明日状态</div><div class="card-desc" id="tomorrowDateDesc">--</div></div></div>
+        <div id="tomorrowZoneRows"></div>
+      </div>
+
+      <div class="stats-row" id="statsGrid"></div>
+
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">快捷操作</div><div class="card-desc">全局打铃控制</div></div></div>
+        <div class="quick-row">
+          <button class="btn btn-danger" onclick="doAction('pause')">全局暂停</button>
+          <button class="btn btn-success" onclick="doAction('resume')">全局恢复</button>
+          <button class="btn btn-outline" onclick="doAction('stop')">全部停止</button>
+          <button class="btn btn-primary" onclick="quickRing('class_start')">上课铃</button>
+          <button class="btn btn-outline" onclick="quickRing('class_end')">下课铃</button>
+          <button class="btn btn-warning" onclick="quickRing('emergency')">紧急铃</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 课表 ===== -->
+    <div class="page" id="page-schedules">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">课表方案</div>
+          <div class="flex gap-8 items-center">
+            <select id="schedSelect" style="width:200px"></select>
+            <button class="btn btn-primary" onclick="createSchedule()">新建</button>
+            <button class="btn btn-success" onclick="activateSchedule()">激活</button>
+            <button class="btn btn-danger" onclick="deleteSchedule()">删除</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">打铃任务</div>
+          <div class="flex gap-8 items-center">
+            <select id="taskZoneFilter" style="width:110px" onchange="loadTasks()"><option value="">全部区域</option></select>
+            <button class="btn btn-primary" onclick="addTask()">添加任务</button>
+            <button class="btn btn-outline" onclick="exportExcel()">导出Excel</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>区域</th><th>时间</th><th>铃声类型</th><th>名称</th><th>适用日期</th><th>操作</th></tr></thead><tbody id="taskTbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ===== 区域 ===== -->
+    <div class="page" id="page-zones">
+      <div id="zonesGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px"></div>
+    </div>
+
+    <!-- ===== 铃声 ===== -->
+    <div class="page" id="page-bells">
+      <div class="card">
+        <div class="card-header"><div class="card-title">铃声库</div><button class="btn btn-primary" onclick="uploadBell()">上传铃声</button></div>
+        <div class="table-wrap"><table><thead><tr><th>名称</th><th>类型</th><th>文件</th><th>操作</th></tr></thead><tbody id="bellTbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ===== 节假日 ===== -->
+    <div class="page" id="page-holidays">
+      <div class="card">
+        <div class="card-header"><div class="card-title">即将到来</div></div>
+        <div id="upcomingHolidays"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">全年节假日</div>
+          <div class="flex gap-8 items-center"><select id="holidayYear" style="width:100px" onchange="loadHolidays()"></select><button class="btn btn-primary" onclick="addCustomHoliday()">自定义假期</button></div>
+        </div>
+        <div class="table-wrap" style="max-height:480px;overflow-y:auto"><table><thead><tr><th>日期</th><th>星期</th><th>名称</th><th>类型</th><th>操作</th></tr></thead><tbody id="holidayTbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ===== 设置 ===== -->
+    <div class="page" id="page-settings">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">NTP 网络校时</div><div class="card-desc">每日自动校准系统时钟</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">NTP服务器</label><input type="text" id="ntpServer" value="ntp.aliyun.com"></div>
+          <div class="form-group"><label class="form-label">上次校时</label><div id="ntpLastSync" style="font-size:13px;color:var(--text-tertiary);font-family:var(--mono)">从未</div></div>
+          <div class="form-group"><label class="form-label">时间偏差</label><div id="ntpOffset" style="font-size:13px;color:var(--text-tertiary)">--</div></div>
+          <div class="flex gap-8"><button class="btn btn-primary" onclick="ntpSync()">立即校时</button><button class="btn btn-success" onclick="saveSettings()">保存</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">钉钉机器人告警</div><div class="card-desc">异常时通知 + 每日8:00明日状态提醒</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">Webhook 地址</label><input type="text" id="dingtalkWebhook" placeholder="https://oapi.dingtalk.com/robot/send?access_token=..."></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" id="dingtalkEnabled"><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用钉钉告警</span></label></div>
+          <div class="flex gap-8"><button class="btn btn-primary" onclick="testDingtalk()">发送测试</button><button class="btn btn-success" onclick="saveSettings()">保存</button></div>
+          <div class="help-block">
+            <strong>配置步骤：</strong><br>
+            1. 打开钉钉群聊 → 右上角 <strong>"..."</strong> → <strong>群设置</strong><br>
+            2. 点击 <strong>智能群助手</strong> → <strong>添加机器人</strong> → <strong>自定义</strong><br>
+            3. 安全设置选择 <strong>"自定义关键词"</strong>，添加关键词 <em>校园广播</em><br>
+            4. 复制 Webhook 地址，粘贴到上方输入框<br>
+            5. 点击 <strong>"发送测试"</strong> 验证配置，再点击 <strong>"保存"</strong><br><br>
+            <strong>告警规则：</strong><br>
+            &bull; 每日8:00：如明日状态偏离常规（周末打铃/工作日不打铃），自动提醒<br>
+            &bull; 实时告警：铃声文件缺失、打铃失败、设备异常<br>
+            &bull; 关键操作：课表变更、设置修改<br>
+            &bull; 同类告警30分钟内不重复
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">访问密码</div><div class="card-desc">留空则不需要密码</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">密码</label><input type="password" id="passwordInput" placeholder="留空不设密码"></div>
+          <button class="btn btn-success" onclick="saveSettings()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 日志 ===== -->
+    <div class="page" id="page-logs">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">运行日志</div>
+          <div class="flex gap-8 items-center"><select id="logCat" style="width:110px" onchange="loadLogs()"><option value="">全部</option><option value="bell">打铃</option><option value="manual">手动</option><option value="exception">例外</option><option value="system">系统</option><option value="settings">设置</option></select><button class="btn btn-ghost" onclick="loadLogs()">刷新</button></div>
+        </div>
+        <div class="table-wrap" style="max-height:520px;overflow-y:auto"><table><thead><tr><th>时间</th><th>级别</th><th>类别</th><th>信息</th></tr></thead><tbody id="logTbody"></tbody></table></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var PT={dashboard:'系统总览',schedules:'课表管理',zones:'区域控制',bells:'铃声管理',holidays:'节假日',settings:'系统设置',logs:'运行日志'};
+var BT={class_start:'上课铃',class_end:'下课铃',prepare:'预备铃',exercise:'课间操',lunch:'午餐铃',school_end:'放学铃',emergency:'紧急铃',custom:'自定义'};
+var ZN={A:'教学楼',B:'操场',C:'宿舍楼'};
+var DN=['周一','周二','周三','周四','周五','周六','周日'];
+var D=''; // 空字符串=同源，后端和前端在同一服务
+
+function api(path,method,data){
+  var opts={method:method||'GET',headers:{'Content-Type':'application/json'}};
+  if(data)opts.body=JSON.stringify(data);
+  return fetch(D+path,opts).then(function(r){return r.json()}).catch(function(e){console.error(e);return null});
+}
+
+function toast(msg,isErr){
+  var t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(isErr?'error':'ok')+' show';
+  setTimeout(function(){t.classList.remove('show')},2500);
+}
+
+function updateClock(){
+  var now=new Date();
+  document.getElementById('clock').textContent=now.toLocaleTimeString('zh-CN',{hour12:false});
+  document.getElementById('dateDisplay').textContent=now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+}
+setInterval(updateClock,1000);updateClock();
+
+document.querySelectorAll('.nav-item').forEach(function(it){
+  it.onclick=function(){
+    document.querySelectorAll('.nav-item').forEach(function(i){i.classList.remove('active')});
+    it.classList.add('active');
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+    document.getElementById('page-'+it.dataset.page).classList.add('active');
+    document.getElementById('pageTitle').textContent=PT[it.dataset.page];
+    loadPage(it.dataset.page);
+  };
+});
+
+var pageLoaded={};
+function loadPage(pg){
+  if(pg==='dashboard')loadDashboard();
+  else if(pg==='schedules')loadSchedules();
+  else if(pg==='zones')loadZones();
+  else if(pg==='bells')loadBells();
+  else if(pg==='holidays')loadHolidays();
+  else if(pg==='settings')loadSettings();
+  else if(pg==='logs')loadLogs();
+}
+
+// ===== 首页 =====
+async function loadDashboard(){
+  var d=await api('/api/status');
+  if(!d||!d.success)return;
+
+  // NTP状态
+  var nb=document.getElementById('ntpBadge');
+  if(d.ntp&&d.ntp.status==='synced'){
+    nb.innerHTML='<span class="dot"></span>NTP已同步'+(d.ntp.offset!=null?' ('+d.ntp.offset+'s)':'');
+    nb.classList.remove('offline');
+  }else{nb.innerHTML='<span class="dot"></span>未同步';nb.classList.add('offline')}
+
+  // 今日日期描述
+  document.getElementById('todayDateDesc').textContent=d.current_date+' '+d.weekday;
+
+  // 明日日期描述
+  var td=new Date();td.setDate(td.getDate()+1);
+  var tmStr=td.toISOString().slice(0,10);
+  var tmWd=DN[td.getDay()?td.getDay()-1:6];
+  document.getElementById('tomorrowDateDesc').textContent=tmStr+' '+tmWd;
+
+  // 今日区域状态行
+  var th='';
+  d.zones.forEach(function(z){
+    var ts=z.today||{};
+    var stTag=ts.status_type==='normal'?'tag-green':ts.status_type==='holiday'?'tag-orange':ts.status_type==='ring'?'tag-green':'tag-red';
+    var stText=ts.status_text||'--';
+    th+='<div class="zone-row"><div class="zone-info"><span class="zname">'+z.name+'</span><span class="tag '+stTag+'">'+stText+'</span></div>';
+    th+='<div class="zone-controls">';
+    th+='<button class="btn btn-success btn-sm" onclick="todayCtrl(\''+z.id+'\',\'ring\')">今日打铃</button>';
+    th+='<select id="todaySched_'+z.id+'" style="width:140px;font-size:12px;padding:2px 6px"><option value="0">默认课表</option>';
+    if(d.schedules)d.schedules.forEach(function(s){th+='<option value="'+s.id+'">'+s.name+'</option>'});
+    th+='</select>';
+    th+='<button class="btn btn-danger btn-sm" onclick="todayCtrl(\''+z.id+'\',\'no_ring\')">今日不打铃</button>';
+    th+='<button class="btn btn-ghost btn-sm" onclick="todayCtrl(\''+z.id+'\',\'auto\')">恢复自动</button>';
+    th+='</div></div>';
+  });
+  document.getElementById('todayZoneRows').innerHTML=th;
+
+  // 明日区域状态行
+  var tmh='';
+  d.zones.forEach(function(z){
+    var tmOv=z.tomorrow_override;
+    var tmTag=tmOv==='force_ring'?'tag-green':tmOv==='force_no_ring'?'tag-red':'tag-blue';
+    var tmText=tmOv==='force_ring'?'明日打铃':tmOv==='force_no_ring'?'明日不打铃':'自动';
+    var tmShould=z.tomorrow_should_bell;
+    tmh+='<div class="zone-row"><div class="zone-info"><span class="zname">'+z.name+'</span><span class="tag '+tmTag+'">'+tmText+'</span></div>';
+    tmh+='<div class="zone-controls">';
+    tmh+='<button class="btn btn-success btn-sm" onclick="tomorrowCtrl(\''+z.id+'\',\'ring\')">明日打铃</button>';
+    tmh+='<select id="tmSched_'+z.id+'" style="width:140px;font-size:12px;padding:2px 6px"><option value="0">默认课表</option>';
+    if(d.schedules)d.schedules.forEach(function(s){tmh+='<option value="'+s.id+'">'+s.name+'</option>'});
+    tmh+='</select>';
+    tmh+='<button class="btn btn-danger btn-sm" onclick="tomorrowCtrl(\''+z.id+'\',\'no_ring\')">明日不打铃</button>';
+    tmh+='<button class="btn btn-ghost btn-sm" onclick="tomorrowCtrl(\''+z.id+'\',\'auto\')">恢复自动</button>';
+    tmh+='</div></div>';
+  });
+  document.getElementById('tomorrowZoneRows').innerHTML=tmh;
+
+  // 统计
+  var alertH='';
+  if(d.global_paused)alertH='<div class="alert alert-error"><strong>系统已暂停</strong>，打铃不会执行</div>';
+  document.getElementById('dashAlert').innerHTML=alertH;
+
+  document.getElementById('statsGrid').innerHTML=
+    '<div class="stat-card"><div class="stat-icon blue"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></div><div class="stat-label">当前课表</div><div class="stat-value">'+d.active_schedule+'</div></div>'+
+    '<div class="stat-card"><div class="stat-icon green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="stat-label">系统状态</div><div class="stat-value" style="color:'+(d.global_paused?'var(--error)':'var(--success)')+'">'+(d.global_paused?'已暂停':'运行中')+'</div></div>'+
+    '<div class="stat-card"><div class="stat-icon orange"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="stat-label">下次打铃</div><div class="stat-value" style="font-size:22px">'+(d.next_bell?d.next_bell.time:'--:--')+'</div><div class="stat-sub">'+(d.next_bell?(BT[d.next_bell.bell_type]||d.next_bell.bell_type)+' / '+(d.next_bell.zone_name||ZN[d.next_bell.zone]||d.next_bell.zone):'暂无')+'</div></div>'+
+    '<div class="stat-card"><div class="stat-icon '+(d.ntp&&d.ntp.status==='synced'?'green':'red')+'"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="stat-label">NTP校时</div><div class="stat-value" style="font-size:16px">'+(d.ntp?d.ntp.last_sync:'--')+'</div><div class="stat-sub">'+(d.ntp&&d.ntp.offset!=null?'偏差 '+d.ntp.offset+'s':'')+'</div></div>';
+}
+
+async function todayCtrl(zid,act){
+  var sid=parseInt(document.getElementById('todaySched_'+zid).value)||0;
+  var d=await api('/api/today_control','POST',{zone_id:zid,action:act,schedule_id:sid});
+  toast(d&&d.success?d.message:'操作失败',!(d&&d.success));
+  loadDashboard();
+}
+async function tomorrowCtrl(zid,act){
+  var sid=parseInt(document.getElementById('tmSched_'+zid).value)||0;
+  var d=await api('/api/tomorrow_control','POST',{zone_id:zid,action:act,schedule_id:sid});
+  toast(d&&d.success?d.message:'操作失败',!(d&&d.success));
+  loadDashboard();
+}
+
+// ===== 全局操作 =====
+async function doAction(a){await api('/api/bell/'+a,'POST',{});toast(a==='pause'?'已暂停':a==='resume'?'已恢复':'已停止');loadDashboard()}
+function quickRing(t){api('/api/bell/ring','POST',{zone_id:'A',bell_type:t});toast('打铃：'+BT[t])}
+
+// ===== 课表 =====
+async function loadSchedules(){
+  var d=await api('/api/schedules');if(!d||!d.success)return;
+  var sel=document.getElementById('schedSelect');sel.innerHTML='';
+  d.schedules.forEach(function(s){sel.innerHTML+='<option value="'+s.id+'"'+(s.is_active?' selected':'')+'>'+s.name+(s.is_active?' (激活)':'')+' ('+s.task_count+'条)</option>'});
+  // 区域筛选
+  var zs=document.getElementById('taskZoneFilter');zs.innerHTML='<option value="">全部区域</option>';
+  d.schedules.forEach(function(s){var zt=s.zone_tasks||{};for(var k in zt){if(!zs.querySelector('option[value="'+k+'"]'))zs.innerHTML+='<option value="'+k+'">'+ZN[k]||k+'</option>';}});
+  loadTasks();
+}
+async function loadTasks(){
+  var sid=document.getElementById('schedSelect').value;var zf=document.getElementById('taskZoneFilter').value;
+  var d=await api('/api/schedules');if(!d||!d.success)return;
+  var sched=d.schedules.find(function(s){return s.id==sid});if(!sched)return;
+  var tasks=[];var zt=sched.zone_tasks||{};
+  if(zf){tasks=zt[zf]||[]}else{for(var k in zt)tasks=tasks.concat(zt[k])}
+  tasks.sort(function(a,b){return a.time>b.time?1:-1});
+  var h='';tasks.forEach(function(t){
+    h+='<tr><td><span class="tag tag-blue">'+(ZN[t.zone_id]||t.zone_id)+'</span></td><td><strong style="font-family:var(--mono)">'+t.time+'</strong></td><td><span class="tag tag-orange">'+(BT[t.bell_type]||t.bell_type)+'</span></td><td>'+t.task_name+'</td><td style="color:var(--text-tertiary);font-size:12px">'+(t.days?t.days.split(',').map(function(d){return DN[parseInt(d)-1]}).join('、'):'--')+'</td><td><button class="btn btn-danger btn-sm" onclick="deleteTask('+t.id+')">删除</button></td></tr>';
+  });
+  document.getElementById('taskTbody').innerHTML=h||'<tr><td colspan="6" style="text-align:center;color:var(--text-quaternary)">暂无任务</td></tr>';
+}
+async function createSchedule(){var n=prompt('课表名称：');if(!n)return;var d=await api('/api/schedules','POST',{name:n});toast(d&&d.success?'创建成功':'失败',!(d&&d.success));loadSchedules()}
+async function activateSchedule(){var sid=document.getElementById('schedSelect').value;var d=await api('/api/schedules/'+sid,'PUT',{activate:true});toast(d&&d.success?'已激活':'失败');loadSchedules()}
+async function deleteSchedule(){var sid=document.getElementById('schedSelect').value;if(!confirm('确认删除？'))return;var d=await api('/api/schedules/'+sid,'DELETE');toast(d&&d.success?'已删除':'失败');loadSchedules()}
+async function addTask(){var sid=document.getElementById('schedSelect').value;var d=await api('/api/tasks','POST',{schedule_id:sid,zone_id:'A',time:'08:00',bell_type:'class_start',task_name:'新任务',days:'1,2,3,4,5'});toast(d&&d.success?'添加成功':'失败');loadTasks()}
+async function deleteTask(tid){var d=await api('/api/tasks/'+tid,'DELETE');loadTasks()}
+
+// ===== 区域 =====
+async function loadZones(){var d=await api('/api/zones');if(!d||!d.success)return;var h='';d.zones.forEach(function(z){h+='<div class="card" style="border-top:3px solid '+(z.id==='A'?'var(--error)':z.id==='B'?'var(--primary)':'var(--success)')+'"><div class="card-header"><div class="card-title">'+z.name+'</div><span class="tag '+(z.enabled?'tag-green':'tag-red')+'">'+(z.enabled?'已启用':'已禁用')+'</span></div><div class="form-group"><label class="form-label">名称</label><input type="text" value="'+z.name+'" onchange="updateZone(\''+z.id+'\',\'name\',this.value)"></div><div class="form-group"><label class="form-label">音量 <strong>'+z.volume+'</strong>%</label></div><div class="form-group"><label class="form-label">设备</label><input type="text" value="'+(z.audio_device||'')+'" placeholder="默认设备" onchange="updateZone(\''+z.id+'\',\'audio_device\',this.value)"></div><div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" '+(z.enabled?'checked':'')+' onchange="updateZone(\''+z.id+'\',\'enabled\',this.checked)"><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用此区域</span></label></div><div class="quick-row"><button class="btn btn-danger" onclick="doActionZone(\'pause\',\''+z.id+'\')">暂停</button><button class="btn btn-success" onclick="doActionZone(\'resume\',\''+z.id+'\')">恢复</button><button class="btn btn-primary" onclick="quickRingZone(\''+z.id+'\')">测试</button></div></div>'});document.getElementById('zonesGrid').innerHTML=h}
+async function updateZone(zid,key,val){var d={};d[key]=val;await api('/api/zones/'+zid,'PUT',d);toast('已更新')}
+function doActionZone(a,zid){api('/api/bell/'+a,'POST',{zone_id:zid});toast(zid+' '+(a==='pause'?'已暂停':'已恢复'))}
+function quickRingZone(zid){api('/api/bell/ring','POST',{zone_id:zid,bell_type:'class_start'});toast(ZN[zid]+' 测试打铃')}
+
+// ===== 铃声 =====
+async function loadBells(){var d=await api('/api/bells');if(!d||!d.success)return;var h='';d.bells.forEach(function(b){h+='<tr><td>'+b.name+'</td><td><span class="tag tag-orange">'+(BT[b.bell_type]||b.bell_type)+'</span></td><td style="font-size:12px;color:var(--text-tertiary);font-family:var(--mono)">'+b.filename+'</td><td><div class="flex gap-8"><button class="btn btn-primary btn-sm" onclick="playBell(\''+b.filename+'\')">试听</button><button class="btn btn-danger btn-sm" onclick="deleteBell('+b.id+')">删除</button></div></td></tr>'});document.getElementById('bellTbody').innerHTML=h||'<tr><td colspan="4" style="text-align:center;color:var(--text-quaternary)">暂无铃声</td></tr>'}
+function uploadBell(){toast('请在设置中上传铃声文件')}
+function playBell(f){api('/api/bell/ring','POST',{zone_id:'A',bell_type:'class_start'});toast('播放中')}
+async function deleteBell(id){if(!confirm('确认删除？'))return;await api('/api/bells/'+id,'DELETE');loadBells()}
+
+// ===== 节假日 =====
+async function loadHolidays(){var y=document.getElementById('holidayYear').value||new Date().getFullYear();var d=await api('/api/holidays?year='+y);if(!d||!d.success)return;var uh='';(d.upcoming||[]).forEach(function(h){uh+='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-secondary);font-size:13px"><span>'+h.date+' '+h.weekday+' <span class="tag '+(h.type==='holiday'?'tag-red':'tag-blue')+'">'+h.name+'</span></span><span style="color:var(--warning);font-weight:600;font-size:12px">'+h.days_away+'天后</span></div>'});document.getElementById('upcomingHolidays').innerHTML=uh||'<div style="padding:16px;color:var(--text-quaternary)">近期无节假日</div>';var hh='';(d.holidays||[]).forEach(function(h){hh+='<tr><td style="font-family:var(--mono)">'+h.date+'</td><td>'+DN[new Date(h.date).getDay()?new Date(h.date).getDay()-1:6]+'</td><td>'+h.name+'</td><td><span class="tag '+(h.type==='holiday'?'tag-red':'tag-blue')+'">'+(h.type==='holiday'?'放假':'调休')+'</span></td><td>'+(h.custom?'<button class="btn btn-danger btn-sm" onclick="deleteCustomHoliday('+h.id+')">删除</button>':'--')+'</td></tr>'});document.getElementById('holidayTbody').innerHTML=hh}
+function addCustomHoliday(){var d=prompt('日期(YYYY-MM-DD)：');var n=prompt('名称：');if(!d||!n)return;api('/api/holidays/custom','POST',{date:d,name:n,is_holiday:true});loadHolidays()}
+async function deleteCustomHoliday(id){await api('/api/holidays/custom/'+id,'DELETE');loadHolidays()}
+
+// ===== 设置 =====
+async function loadSettings(){var d=await api('/api/settings');if(!d||!d.success)return;var s=d.settings;document.getElementById('ntpServer').value=s.ntp_server||'ntp.aliyun.com';document.getElementById('ntpLastSync').textContent=s.ntp_last_sync||'从未';document.getElementById('dingtalkWebhook').value=s.dingtalk_webhook||'';document.getElementById('dingtalkEnabled').checked=s.dingtalk_enabled==='1'}
+async function saveSettings(){var d={ntp_server:document.getElementById('ntpServer').value,dingtalk_webhook:document.getElementById('dingtalkWebhook').value,dingtalk_enabled:document.getElementById('dingtalkEnabled').checked?'1':'0',password:document.getElementById('passwordInput').value};var r=await api('/api/settings','POST',d);toast(r&&r.success?'已保存':'保存失败',!(r&&r.success));loadDashboard()}
+async function ntpSync(){var r=await api('/api/ntp/sync','POST');toast(r&&r.success?'校时成功，偏差'+r.offset+'秒':'校时失败',!(r&&r.success));loadSettings();loadDashboard()}
+async function testDingtalk(){var r=await api('/api/dingtalk/test','POST');toast(r&&r.success?'测试消息已发送':'发送失败',!(r&&r.success))}
+
+// ===== 日志 =====
+async function loadLogs(){var cat=document.getElementById('logCat').value;var d=await api('/api/logs?per_page=50'+(cat?'&category='+cat:''));if(!d||!d.success)return;var h='';d.logs.forEach(function(l){h+='<tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">'+l.timestamp.slice(0,19)+'</td><td><span class="tag '+(l.level==='ERROR'?'tag-red':'tag-blue')+'">'+l.level+'</span></td><td><span class="tag tag-blue">'+l.category+'</span></td><td>'+l.message+'</td></tr>'});document.getElementById('logTbody').innerHTML=h||'<tr><td colspan="4" style="text-align:center;color:var(--text-quaternary)">暂无日志</td></tr>'}
+
+// ===== 初始化 =====
+loadDashboard();
+setInterval(loadDashboard,30000);
+</script>
+</body>
+</html>
