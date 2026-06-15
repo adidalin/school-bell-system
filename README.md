@@ -1,6 +1,6 @@
 <!--
   搜索关键词 / Search Keywords:
-  钢城智慧铃声系统 校园广播系统 学校打铃系统 自动打铃 智能广播 校园铃声 上下课铃声 课间操铃声
+  智慧铃声系统 校园广播系统 学校打铃系统 自动打铃 智能广播 校园铃声 上下课铃声 课间操铃声
   作息时间管理 学校铃声控制系统 多区域广播 定压功放 公共广播系统 PA系统
   School Bell System Campus Bell Automatic Bell Ringing School Schedule Bell
   Multi-zone Audio Broadcast Campus PA System Smart School Bell Timer
