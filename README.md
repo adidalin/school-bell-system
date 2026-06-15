@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey?style=flat-square" alt="Platform">
 </p>
 
-<h1 align="center">🔔 钢城智慧铃声系统</h1>
+<h1 align="center">🔔 智慧铃声系统</h1>
 <h3 align="center">Gangcheng Smart Bell System — Multi-zone Campus Bell Scheduler</h3>
 
 <p align="center">
