@@ -806,7 +806,8 @@ def api_dingtalk_test():
     if not webhook:
         return jsonify({"error": "未配置钉钉Webhook"}), 400
     engine.dingtalk.configure(webhook, True)
-    result = engine.dingtalk.send("测试告警", "这是一条测试消息，验证钉钉机器人配置是否正确。")
+    # 测试绕过冷却，直接发
+    result = engine.dingtalk.send("测试告警", "这是一条测试消息，验证钉钉机器人配置是否正确。", bypass_cooldown=True)
     return jsonify({"success": result})
 
 

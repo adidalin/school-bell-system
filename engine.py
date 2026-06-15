@@ -394,15 +394,15 @@ class DingTalkNotifier:
         self.webhook = webhook
         self.enabled = enabled
 
-    def send(self, title, content):
+    def send(self, title, content, bypass_cooldown=False):
         """发送钉钉消息"""
         if not self.enabled or not self.webhook:
             return False
 
-        # 冷却检查
+        # 冷却检查（测试时可绕过）
         key = f"{title}:{content[:50]}"
         now = time.time()
-        if key in self._last_alert and now - self._last_alert[key] < self._cooldown:
+        if not bypass_cooldown and key in self._last_alert and now - self._last_alert[key] < self._cooldown:
             logger.debug(f"钉钉告警冷却中，跳过: {title}")
             return False
 
@@ -410,8 +410,8 @@ class DingTalkNotifier:
             data = json.dumps({
                 "msgtype": "markdown",
                 "markdown": {
-                    "title": f"校园广播-{title}",
-                    "text": f"### 校园广播系统 - {title}\n\n{content}\n\n> 时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    "title": f"钢城智慧铃声-{title}",
+                    "text": f"### 钢城智慧铃声系统 - {title}\n\n{content}\n\n> 时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 }
             }, ensure_ascii=False).encode("utf-8")
 

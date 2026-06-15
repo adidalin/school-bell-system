@@ -220,9 +220,9 @@ def init_system():
         if success:
             set_setting("ntp_last_sync", datetime.now().isoformat())
 
-    add_log("INFO", "system", "校园广播系统V5.0启动完成")
+    add_log("INFO", "system", "钢城智慧铃声系统V5.0启动完成")
     logger.info("=" * 50)
-    logger.info("校园广播系统 V5.0 启动成功!")
+    logger.info("钢城智慧铃声系统 V5.0 启动成功!")
     logger.info(f"访问地址: http://0.0.0.0:{get_setting('port', '8787')}")
     logger.info("=" * 50)
 

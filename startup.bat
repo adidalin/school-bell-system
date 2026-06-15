@@ -1,13 +1,12 @@
 @echo off
-chcp 65001 >nul
-title 校园广播系统 - 开机自启设置
+title School Bell - Setup
 
 echo ==========================================
-echo   校园广播系统 - 开机自启动配置
+echo   School Bell System - Autostart Setup
 echo ==========================================
 echo.
-echo 此脚本将设置系统在 Windows 登录后自动启动。
-echo 即使断电重启，系统也会在登录后自动运行。
+echo This will setup auto-start on Windows login.
+echo System will auto-recover after power outage.
 echo.
 
 set "SCRIPT_DIR=%~dp0"
@@ -16,38 +15,38 @@ set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 
 if not exist "%STARTUP_FOLDER%" mkdir "%STARTUP_FOLDER%" 2>nul
 
-copy /Y "%VBS_FILE%" "%STARTUP_FOLDER%\校园广播系统.vbs" >nul 2>&1
+copy /Y "%VBS_FILE%" "%STARTUP_FOLDER%\SchoolBell.vbs" >nul 2>&1
 
 if errorlevel 1 (
-    echo [失败] 无法复制到启动文件夹
-    echo 请手动将 start_hidden.vbs 复制到:
+    echo [FAIL] Cannot copy to startup folder
+    echo Please manually copy start_hidden.vbs to:
     echo %STARTUP_FOLDER%
-    echo 并重命名为 "校园广播系统.vbs"
+    echo and rename to "SchoolBell.vbs"
 ) else (
-    echo [成功] 已配置开机自启动
-    echo 位置: %STARTUP_FOLDER%\校园广播系统.vbs
+    echo [ OK ] Autostart configured
+    echo Path: %STARTUP_FOLDER%\SchoolBell.vbs
     echo.
-    echo 下次 Windows 登录后系统将自动运行。
+    echo System will auto-run after next Windows login.
 )
 
 echo.
 echo ==========================================
-echo   配置 NTP 时间自动同步
+echo   NTP Time Sync Setup
 echo ==========================================
 echo.
 
 w32tm /config /manualpeerlist:ntp.aliyun.com /syncfromflags:manual /reliable:yes /update >nul 2>&1
 if errorlevel 1 (
-    echo [提示] NTP时间服务配置需要管理员权限
-    echo 请右键此脚本 -- 以管理员身份运行，以启用高精度时间同步
-    echo （不影响打铃功能，但系统时间偏差会累积）
+    echo [INFO] NTP config needs Administrator
+    echo Please right-click this BAT - Run as Administrator
+    echo Calendar bell still works without it, but clock may drift.
 ) else (
     net stop w32time >nul 2>&1
     net start w32time >nul 2>&1
     w32tm /resync >nul 2>&1
-    echo [成功] NTP时间服务已配置
-    echo 系统将自动与 ntp.aliyun.com 同步时间
-    echo 精度可达 0.01 秒以内
+    echo [ OK ] NTP time service configured
+    echo System will auto-sync with ntp.aliyun.com
+    echo Precision: ~0.01 seconds
 )
 
 echo.
