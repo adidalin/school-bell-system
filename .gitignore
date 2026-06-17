@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+logs/
+data/
+backups/
+static/sounds/*.mp3
+.DS_Store
+thumbs.db

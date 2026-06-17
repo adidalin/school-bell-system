@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>钢城智慧铃声系统（演示版）</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --primary:#1677ff;--primary-hover:#4096ff;--primary-bg:#e6f4ff;--primary-border:#91caff;
+  --primary-light:rgba(22,119,255,0.06);
+  --success:#52c41a;--success-bg:#f6ffed;--success-border:#b7eb8f;
+  --warning:#faad14;--warning-bg:#fffbe6;--warning-border:#ffe58f;
+  --error:#ff4d4f;--error-bg:#fff2f0;--error-border:#ffccc7;
+  --bg-layout:#f5f6fa;--bg-card:#ffffff;--bg-spot:#f8f9fb;--bg-hover:#f0f2f5;
+  --border:#e5e7eb;--border-secondary:#f0f1f3;
+  --text-primary:rgba(0,0,0,0.88);--text-secondary:rgba(0,0,0,0.65);--text-tertiary:rgba(0,0,0,0.45);--text-quaternary:rgba(0,0,0,0.25);
+  --sidebar-bg:#0f172a;--sidebar-hover:rgba(255,255,255,0.06);--sidebar-active:#1677ff;
+  --sidebar-w:232px;--header-h:60px;--radius:10px;--radius-sm:7px;--radius-xs:5px;
+  --font:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'SF Mono','Cascadia Code','JetBrains Mono',Consolas,monospace;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.04);--shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.06),0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:0 8px 24px rgba(0,0,0,0.08),0 4px 8px rgba(0,0,0,0.04);
+}
+html{font-size:14px}
+body{font-family:var(--font);background:var(--bg-layout);color:var(--text-primary);line-height:1.6;display:flex;min-height:100vh;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+::selection{background:var(--primary);color:#fff}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:#9ca3af}
+
+.sidebar{width:var(--sidebar-w);background:linear-gradient(180deg,#0f172a 0%,#1e293b 100%);position:fixed;left:0;top:0;bottom:0;z-index:100;display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,0.12)}
+.sidebar-brand{height:var(--header-h);display:flex;align-items:center;padding:0 22px;gap:12px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0}
+.sidebar-brand .logo-icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),#4096ff);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(22,119,255,0.35)}
+.sidebar-brand .logo-icon svg{width:19px;height:19px;fill:#fff}
+.sidebar-brand .brand-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:0.01em}
+.sidebar-nav{flex:1;padding:8px 0;overflow-y:auto}
+.nav-group{margin-bottom:4px}
+.nav-group-label{font-size:10.5px;font-weight:600;color:rgba(255,255,255,0.28);padding:18px 22px 6px;letter-spacing:0.08em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:0 12px;height:42px;color:rgba(255,255,255,0.55);cursor:pointer;transition:all .2s cubic-bezier(0.4,0,0.2,1);font-size:13.5px;margin:1px 10px;border-radius:var(--radius-sm);user-select:none;position:relative}
+.nav-item:hover{color:rgba(255,255,255,0.9);background:var(--sidebar-hover)}
+.nav-item.active{color:#fff;background:rgba(22,119,255,0.25);font-weight:500;box-shadow:0 2px 8px rgba(22,119,255,0.15)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--primary);border-radius:0 3px 3px 0}
+.nav-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-icon,.nav-item:hover .nav-icon{opacity:1}
+.nav-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-footer{padding:14px 22px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px rgba(82,196,26,0.6);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.5}}
+.status-label{font-size:12px;color:rgba(255,255,255,0.4)}
+
+.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-height:100vh}
+.header{height:var(--header-h);background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:50}
+.header-title{font-size:17px;font-weight:600;color:var(--text-primary);letter-spacing:-0.01em}
+.header-right{display:flex;align-items:center;gap:18px}
+.header-time{font-size:13px;color:var(--text-tertiary);font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500}
+.header-date{font-size:12px;color:var(--text-quaternary);font-weight:500}
+.ntp-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:500;background:linear-gradient(135deg,#f0fdf4,#dcfce7);color:#16a34a;border:1px solid #bbf7d0;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+.ntp-badge.offline{background:linear-gradient(135deg,#fffbeb,#fef3c7);color:#d97706;border-color:#fde68a}
+.ntp-badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.content{flex:1;padding:28px 32px;max-width:1280px;width:100%}
+
+.page{display:none}.page.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:translateY(0)}}
+
+.card{background:var(--bg-card);border-radius:var(--radius);padding:22px 26px;margin-bottom:18px;border:1px solid var(--border);box-shadow:var(--shadow-sm);transition:box-shadow .25s ease}
+.card:hover{box-shadow:var(--shadow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:600;letter-spacing:-0.01em}
+.card-desc{font-size:12px;color:var(--text-tertiary);margin-top:3px;font-weight:450}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:26px}
+.stat-card{background:var(--bg-card);border-radius:var(--radius);padding:22px;border:1px solid var(--border);box-shadow:var(--shadow-sm);transition:all .25s ease;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:0;transition:opacity .25s}
+.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.stat-card:hover::after{opacity:1}
+.stat-card:has(.stat-icon.blue)::after{background:linear-gradient(90deg,var(--primary),var(--primary-hover))}
+.stat-card:has(.stat-icon.green)::after{background:linear-gradient(90deg,var(--success),#73d13d)}
+.stat-card:has(.stat-icon.orange)::after{background:linear-gradient(90deg,var(--warning),#ffc53d)}
+.stat-card:has(.stat-icon.red)::after{background:linear-gradient(90deg,var(--error),#ff7875)}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.stat-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8}
+.stat-icon.blue{background:var(--primary-bg);color:var(--primary)}
+.stat-icon.green{background:var(--success-bg);color:var(--success)}
+.stat-icon.red{background:var(--error-bg);color:var(--error)}
+.stat-icon.orange{background:var(--warning-bg);color:var(--warning)}
+.stat-label{font-size:12.5px;color:var(--text-tertiary);margin-bottom:6px;font-weight:500}
+.stat-value{font-size:26px;font-weight:700;letter-spacing:-0.03em;line-height:1.1}
+.stat-sub{font-size:12px;color:var(--text-tertiary);margin-top:6px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 16px;border:1px solid transparent;border-radius:var(--radius-xs);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s cubic-bezier(0.4,0,0.2,1);font-family:var(--font);white-space:nowrap;line-height:1.5;letter-spacing:0.01em}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 1px 2px rgba(22,119,255,0.2)}
+.btn-primary:hover{background:var(--primary-hover);box-shadow:0 2px 8px rgba(22,119,255,0.3)}
+.btn-danger{background:#fff;color:var(--error);border-color:var(--error-border);box-shadow:var(--shadow-sm)}
+.btn-danger:hover{background:var(--error-bg);border-color:var(--error);box-shadow:var(--shadow)}
+.btn-success{background:#fff;color:var(--success);border-color:var(--success-border);box-shadow:var(--shadow-sm)}
+.btn-success:hover{background:var(--success-bg);border-color:var(--success);box-shadow:var(--shadow)}
+.btn-warning{background:#fff;color:#d97706;border-color:var(--warning-border);box-shadow:var(--shadow-sm)}
+.btn-warning:hover{background:var(--warning-bg);box-shadow:var(--shadow)}
+.btn-ghost{background:transparent;color:var(--text-secondary);border:none}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--primary)}
+.btn-outline{background:#fff;color:var(--text-secondary);border-color:var(--border);box-shadow:var(--shadow-sm)}
+.btn-outline:hover{color:var(--primary);border-color:var(--primary);box-shadow:var(--shadow)}
+.btn-sm{padding:3px 10px;font-size:12px;border-radius:5px}
+
+input[type="text"],input[type="password"],input[type="time"],input[type="date"],input[type="range"],select{padding:7px 12px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:13px;color:var(--text-primary);font-family:var(--font);transition:all .2s ease;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(22,119,255,0.1)}
+input[type="range"]{padding:0;height:22px;cursor:pointer;border:none;background:transparent;accent-color:var(--primary)}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+
+.tag{display:inline-flex;align-items:center;padding:2px 10px;border-radius:5px;font-size:11.5px;font-weight:500;letter-spacing:0.01em}
+.tag-blue{background:var(--primary-bg);color:var(--primary);border:1px solid var(--primary-border)}
+.tag-green{background:var(--success-bg);color:#389e0d;border:1px solid var(--success-border)}
+.tag-red{background:var(--error-bg);color:#cf1322;border:1px solid var(--error-border)}
+.tag-orange{background:var(--warning-bg);color:#d48806;border:1px solid var(--warning-border)}
+
+.table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--bg-spot);padding:12px 18px;text-align:left;font-weight:600;font-size:12px;color:var(--text-tertiary);border-bottom:1px solid var(--border);letter-spacing:0.02em;text-transform:uppercase}
+td{padding:13px 18px;border-bottom:1px solid var(--border-secondary);color:var(--text-secondary)}
+tbody tr{transition:all .15s ease}
+tbody tr:hover{background:var(--primary-light)}
+
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:12.5px;font-weight:600;color:var(--text-primary);margin-bottom:7px;letter-spacing:0.01em}
+.help-block{margin-top:18px;padding:14px 18px;background:var(--bg-spot);border-radius:var(--radius-sm);font-size:12.5px;color:var(--text-secondary);line-height:1.9;border:1px solid var(--border-secondary)}
+.help-block strong{color:var(--text-primary);font-weight:600}
+.help-block em{color:var(--primary);font-style:normal;font-weight:600}
+
+.zone-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border-secondary);gap:14px;flex-wrap:wrap;transition:background .15s}
+.zone-row:hover{background:var(--bg-spot)}
+.zone-row:last-child{border-bottom:none}
+.zone-row .zone-info{display:flex;align-items:center;gap:12px;min-width:140px}
+.zone-row .zone-info .zname{font-weight:600;font-size:14px}
+.zone-row .zone-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.quick-row{display:flex;flex-wrap:wrap;gap:10px}
+.flex{display:flex}.gap-8{gap:8px}.gap-10{gap:10px}.items-center{align-items:center}
+.alert{padding:12px 18px;border-radius:var(--radius-sm);margin-bottom:18px;font-size:13px;display:flex;align-items:center;gap:8px}
+.alert-warning{background:var(--warning-bg);border:1px solid var(--warning-border);color:#d97706}
+.alert-error{background:var(--error-bg);border:1px solid var(--error-border);color:#cf1322}
+.switch{position:relative;width:38px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch-track{position:absolute;cursor:pointer;inset:0;background:#d1d5db;border-radius:11px;transition:all .25s cubic-bezier(0.4,0,0.2,1)}
+.switch-track::before{content:'';position:absolute;height:18px;width:18px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:all .25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 1px 3px rgba(0,0,0,0.18)}
+.switch input:checked+.switch-track{background:var(--primary)}
+.switch input:checked+.switch-track::before{transform:translateX(16px)}
+
+.toast{position:fixed;top:24px;right:24px;padding:13px 22px;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:var(--radius);box-shadow:var(--shadow-lg);border:1px solid var(--border);font-size:13px;z-index:9999;transform:translateX(130%);transition:transform .35s cubic-bezier(0.22,0.61,0.36,1);font-weight:500}
+.toast.show{transform:translateX(0)}
+.toast.error{border-left:3px solid var(--error);color:var(--error)}
+.toast.ok{border-left:3px solid var(--success);color:#389e0d}
+
+@media(max-width:768px){
+  .sidebar{display:none}.main{margin-left:0}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:12px}
+  .content{padding:16px}.card{padding:16px}
+  .stat-value{font-size:20px}
+  .zone-row{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div class="brand-name">钢城智慧铃声</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">概览</div>
+      <div class="nav-item active" data-page="dashboard"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span>系统总览</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">管理</div>
+      <div class="nav-item" data-page="schedules"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></span><span>课表管理</span></div>
+      <div class="nav-item" data-page="zones"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M2 20h20M5 20V8l7-5 7 5v12"/><path d="M9 20v-5h6v5"/></svg></span><span>区域控制</span></div>
+      <div class="nav-item" data-page="bells"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span>铃声管理</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">配置</div>
+      <div class="nav-item" data-page="holidays"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span>节假日</span></div>
+      <div class="nav-item" data-page="schedule"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="3"/></svg></span><span>预约控制</span></div>
+      <div class="nav-item" data-page="settings"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span><span>系统设置</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">系统</div>
+      <div class="nav-item" data-page="logs"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span><span>运行日志</span></div>
+    </div>
+  </nav>
+  <div class="sidebar-footer"><div class="status-dot"></div><span class="status-label">系统运行中</span></div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <h1 class="header-title" id="pageTitle">系统总览</h1>
+    <div class="header-right">
+      <div class="ntp-badge" id="ntpBadge" title="NTP校时状态"><span class="dot"></span>未同步</div>
+      <span class="header-date" id="dateDisplay"></span>
+      <span class="header-time" id="clock">--:--:--</span>
+    </div>
+  </header>
+  <main class="content">
+
+    <!-- ===== 总览 ===== -->
+    <div class="page active" id="page-dashboard">
+      <div id="dashAlert"></div>
+
+      <div class="card" style="border-left:4px solid var(--primary)">
+        <div class="card-header"><div><div class="card-title" style="font-size:16px">今日状态</div><div class="card-desc" id="todayDateDesc">--</div></div></div>
+        <div id="todayZoneRows"></div>
+      </div>
+
+      <div class="card" style="border-left:4px solid var(--warning)">
+        <div class="card-header"><div><div class="card-title" style="font-size:16px">明日状态</div><div class="card-desc" id="tomorrowDateDesc">--</div></div></div>
+        <div id="tomorrowZoneRows"></div>
+      </div>
+
+      <div class="stats-row" id="statsGrid"></div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">下次打铃（按区域）</div></div>
+        <div id="nextBellCards"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">快捷操作</div><div class="card-desc">全局打铃控制</div></div></div>
+        <div class="quick-row">
+          <button class="btn btn-danger" onclick="doAction('pause')">全局暂停</button>
+          <button class="btn btn-success" onclick="doAction('resume')">全局恢复</button>
+          <button class="btn btn-outline" onclick="doAction('stop')">全部停止</button>
+          <button class="btn btn-primary" onclick="quickRing('class_start')">上课铃</button>
+          <button class="btn btn-outline" onclick="quickRing('class_end')">下课铃</button>
+          <button class="btn btn-warning" onclick="quickRing('emergency')">紧急铃</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 课表 ===== -->
+    <div class="page" id="page-schedules">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">课表方案</div>
+          <div class="flex gap-8 items-center">
+            <select id="schedSelect" style="width:200px" onchange="loadTasks()"></select>
+            <button class="btn btn-primary" onclick="createSchedule()">新建</button>
+            <button class="btn btn-success" onclick="activateSchedule()">设为默认</button>
+            <button class="btn btn-danger" onclick="deleteSchedule()">删除</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">打铃任务</div>
+          <div class="flex gap-8 items-center">
+            <select id="taskZoneFilter" style="width:130px" onchange="loadTasks()"><option value="">全部区域</option></select>
+            <button class="btn btn-primary" onclick="addTask()">添加任务</button>
+            <button class="btn btn-success" onclick="showImportDialog()">导入Excel</button>
+            <button class="btn btn-outline" onclick="exportExcel()">导出Excel</button>
+            <button class="btn btn-ghost btn-sm" onclick="showToast('下载模板（演示模式）')">下载模板</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>区域</th><th>时间</th><th>铃声类型</th><th>名称</th><th>适用日期</th><th>操作</th></tr></thead><tbody id="taskTbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ===== 区域 ===== -->
+    <div class="page" id="page-zones">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:18px">区域管理</h3>
+        <button class="btn btn-primary" onclick="openZoneDialog()">+ 新增区域</button>
+      </div>
+      <div id="zonesGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px"></div>
+    </div>
+
+    <!-- ===== 铃声 ===== -->
+    <div class="page" id="page-bells">
+      <div class="card">
+        <div class="card-header"><div class="card-title">铃声库</div><button class="btn btn-primary" onclick="uploadBell()">上传铃声</button></div>
+        <div class="table-wrap"><table><thead><tr><th>名称</th><th>类型</th><th>文件</th><th>操作</th></tr></thead><tbody id="bellTbody"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">区域铃声绑定</div><button class="btn btn-primary" onclick="saveAllBindings()">保存绑定</button></div>
+        <div class="table-wrap"><table><thead><tr><th>区域</th><th id="bindHeaderRow"></th></tr></thead><tbody id="bindTbody"></tbody></table></div>
+        <div style="padding:12px;font-size:12px;color:var(--text-tertiary)">选择每个区域在各种铃声类型下使用的具体铃声文件，点击"保存绑定"生效</div>
+      </div>
+    </div>
+
+    <!-- ===== 节假日 ===== -->
+    <div class="page" id="page-holidays">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">即将到来</div>
+          <button class="btn btn-primary" onclick="syncHolidays()">同步节假日</button>
+        </div>
+        <div id="upcomingHolidays"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">全年节假日</div>
+          <div class="flex gap-8 items-center">
+            <select id="holidayYear" style="width:100px" onchange="loadHolidays()"></select>
+            <button class="btn btn-primary" onclick="openHolidayDialog()">添加节日</button>
+          </div>
+        </div>
+        <div class="table-wrap" style="max-height:480px;overflow-y:auto">
+          <table><thead><tr><th>日期</th><th>星期</th><th>名称</th><th>类型</th><th>打铃</th><th>操作</th></tr></thead><tbody id="holidayTbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ===== 预约控制 ===== -->
+    <div class="page" id="page-schedule">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">新建预约</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+          <div class="form-group" style="min-width:140px"><label class="form-label">日期</label><input type="date" id="schedDate" style="width:100%"></div>
+          <div class="form-group" style="min-width:120px"><label class="form-label">区域</label><select id="schedZone" style="width:100%"><option value="">--选择--</option></select></div>
+          <div class="form-group" style="min-width:120px"><label class="form-label">操作</label><select id="schedAction" style="width:100%"><option value="force_no_ring">不打铃（关）</option><option value="force_ring">打铃（开）</option></select></div>
+          <div class="form-group" style="min-width:140px"><label class="form-label">课表（打铃时可选）</label><select id="schedSchedule" style="width:100%"><option value="0">默认课表</option></select></div>
+          <div class="form-group" style="min-width:200px"><label class="form-label">原因说明</label><input type="text" id="schedReason" style="width:100%" placeholder="例如：考试调休"></div>
+          <button class="btn btn-primary" onclick="addSchedule()" style="margin-bottom:2px">添加预约</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">预约列表</div><div class="card-desc">未来日期的铃声开关预约</div></div>
+        <div class="table-wrap"><table><thead><tr><th>日期</th><th>区域</th><th>操作</th><th>课表</th><th>原因</th><th>提醒</th><th>操作</th></tr></thead><tbody id="schedTbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ===== 设置 ===== -->
+    <div class="page" id="page-settings">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">节假日数据源</div><div class="card-desc">设置节假日查询API地址</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">节假日API地址（{}替换为年份）</label><input type="text" id="holidayApiUrl" value="https://timor.tech/api/holiday/year/{}" placeholder="https://timor.tech/api/holiday/year/{}"></div>
+          <div class="help-block">
+            <strong>说明：</strong><br>
+            &bull; 默认使用 <em>timor.tech</em> 中国节假日API<br>
+            &bull; <em>{}</em> 会自动替换为当前年份<br>
+            &bull; 可替换为内部API或其他节假日服务<br>
+            &bull; 修改后点击保存，重新同步即可
+          </div>
+          <button class="btn btn-success" onclick="saveSettings()">保存</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">NTP 网络校时</div><div class="card-desc">每日自动校准系统时钟</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">NTP服务器</label><input type="text" id="ntpServer" value="ntp.aliyun.com"></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" id="ntpEnabled" checked><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用每日自动校时</span></label></div>
+          <div class="form-group"><label class="form-label">上次校时</label><div id="ntpLastSync" style="font-size:13px;color:var(--text-tertiary);font-family:var(--mono)">从未</div></div>
+          <div class="form-group"><label class="form-label">时间偏差</label><div id="ntpOffset" style="font-size:13px;color:var(--text-tertiary)">--</div></div>
+          <div class="flex gap-8"><button class="btn btn-primary" onclick="ntpSync()">立即校时</button><button class="btn btn-success" onclick="saveSettings()">保存</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">钉钉机器人告警</div><div class="card-desc">异常时通知 + 每日8:00明日状态提醒</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">Webhook 地址</label><input type="text" id="dingtalkWebhook" placeholder="https://oapi.dingtalk.com/robot/send?access_token=..."></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" id="dingtalkEnabled"><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用钉钉告警</span></label></div>
+          <div class="flex gap-8"><button class="btn btn-primary" onclick="testDingtalk()">发送测试</button><button class="btn btn-success" onclick="saveSettings()">保存</button></div>
+          <div class="help-block">
+            <strong>配置步骤：</strong><br>
+            1. 打开钉钉群聊 → 右上角 <strong>"..."</strong> → <strong>群设置</strong><br>
+            2. 点击 <strong>智能群助手</strong> → <strong>添加机器人</strong> → <strong>自定义</strong><br>
+            3. 安全设置选择 <strong>"自定义关键词"</strong>，添加关键词 <em>钢城智慧铃声</em><br>
+            4. 复制 Webhook 地址，粘贴到上方输入框<br>
+            5. 点击 <strong>"发送测试"</strong> 验证配置，再点击 <strong>"保存"</strong><br><br>
+            <strong>告警规则：</strong><br>
+            &bull; 每日8:00：如明日状态偏离常规（周末打铃/工作日不打铃），自动提醒<br>
+            &bull; 实时告警：铃声文件缺失、打铃失败、设备异常<br>
+            &bull; 关键操作：课表变更、设置修改<br>
+            &bull; 同类告警30分钟内不重复
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">访问密码</div><div class="card-desc">留空则不需要密码</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">密码</label><input type="password" id="passwordInput" placeholder="留空不设密码"></div>
+          <button class="btn btn-success" onclick="saveSettings()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 日志 ===== -->
+    <div class="page" id="page-logs">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">运行日志</div>
+          <div class="flex gap-8 items-center"><select id="logCat" style="width:110px" onchange="loadLogs()"><option value="">全部</option><option value="bell">打铃</option><option value="manual">手动</option><option value="exception">例外</option><option value="system">系统</option><option value="settings">设置</option></select><button class="btn btn-ghost" onclick="loadLogs()">刷新</button></div>
+        </div>
+        <div class="table-wrap" style="max-height:520px;overflow-y:auto"><table><thead><tr><th>时间</th><th>级别</th><th>类别</th><th>信息</th></tr></thead><tbody id="logTbody"></tbody></table></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="zoneModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;padding:24px;width:440px;max-width:90vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-size:18px">新增区域</h3>
+      <button onclick="closeZoneDialog()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999">&times;</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">区域ID（例如: D, E, F）</label>
+      <input type="text" id="zoneNewId" style="width:100%" placeholder="输入大写字母或数字" maxlength="10">
+    </div>
+    <div class="form-group">
+      <label class="form-label">区域名称</label>
+      <input type="text" id="zoneNewName" style="width:100%" placeholder="例如：教学楼东区">
+    </div>
+    <div class="form-group">
+      <label class="form-label">音频设备</label>
+      <select id="zoneNewDevice" style="width:100%"><option value="default">默认设备（系统默认输出）</option></select>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:24px">
+      <button class="btn btn-outline" onclick="closeZoneDialog()">取消</button>
+      <button class="btn btn-primary" onclick="createZone()">创建区域</button>
+    </div>
+  </div>
+</div>
+
+<div id="holidayModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;padding:24px;width:440px;max-width:90vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-size:18px">添加节日</h3>
+      <button onclick="closeHolidayDialog()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999">&times;</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">日期</label>
+      <input type="date" id="holidayDate" style="width:100%">
+    </div>
+    <div class="form-group">
+      <label class="form-label">节日名称</label>
+      <input type="text" id="holidayName" style="width:100%" placeholder="例如：五一劳动节">
+    </div>
+    <div class="form-group">
+      <label class="form-label">打铃设置</label>
+      <div style="display:flex;gap:12px;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:1px solid var(--border);border-radius:6px;flex:1;text-align:center">
+          <input type="radio" name="holidayBell" value="no_ring" checked> 不打铃（放假）
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border:1px solid var(--border);border-radius:6px;flex:1;text-align:center">
+          <input type="radio" name="holidayBell" value="ring"> 打铃（调休）
+        </label>
+      </div>
+      <div style="font-size:11px;color:var(--text-tertiary);margin-top:6px">放假 → 不打铃 | 调休 → 打铃 | 也可以手动设置</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:24px">
+      <button class="btn btn-outline" onclick="closeHolidayDialog()">取消</button>
+      <button class="btn btn-primary" onclick="saveHoliday()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="taskModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;padding:24px;width:500px;max-width:90vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-size:18px" id="taskModalTitle">添加任务</h3>
+      <button onclick="closeTaskModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999">&times;</button>
+    </div>
+    <input type="hidden" id="taskId" value="">
+    <div class="form-group">
+      <label class="form-label">区域</label>
+      <select id="taskZone" style="width:100%">
+        <option value="">加载中...</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">打铃时间</label>
+      <input type="time" id="taskTime" style="width:100%" value="08:00">
+    </div>
+    <div class="form-group">
+      <label class="form-label">铃声选择</label>
+      <select id="taskBellType" style="width:100%">
+        <option value="">加载中...</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">任务名称</label>
+      <input type="text" id="taskName" style="width:100%" placeholder="例如：上午第一节课">
+    </div>
+    <div class="form-group">
+      <label class="form-label">适用日期（周几）</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" value="1" class="taskDays"> 周一
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" value="2" class="taskDays"> 周二
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" value="3" class="taskDays"> 周三
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" value="4" class="taskDays"> 周四
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" value="5" class="taskDays"> 周五
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" value="6" class="taskDays"> 周六
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" value="7" class="taskDays"> 周日
+        </label>
+      </div>
+      <div style="margin-top:8px">
+        <button class="btn btn-sm btn-outline" onclick="selectAllDays()">全选</button>
+        <button class="btn btn-sm btn-outline" onclick="selectWorkdays()">工作日</button>
+        <button class="btn btn-sm btn-outline" onclick="selectWeekend()">周末</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">一次性日期（留空表示重复执行）</label>
+      <input type="date" id="taskOneTime" style="width:100%">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:24px">
+      <button class="btn btn-outline" onclick="closeTaskModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTask()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== MOCK DATA HELPER =====
+function showToast(msg, isErr) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (isErr ? 'error' : 'ok') + ' show';
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+// ===== MOCK API FUNCTION =====
+function api(path, method, data) {
+  return new Promise(function(resolve) {
+    setTimeout(function() {
+      try {
+        resolve(mockResponse(path, method || 'GET', data));
+      } catch(e) {
+        resolve({success: true});
+      }
+    }, 80);
+  });
+}
+
+function mockResponse(path, method, data) {
+  var m = method.toUpperCase();
+  var pathOnly = path.split('?')[0];
+  var qs = path.indexOf('?') >= 0 ? path.slice(path.indexOf('?') + 1) : '';
+  var params = {};
+  qs.split('&').forEach(function(p) {
+    var kv = p.split('=');
+    if (kv[0]) params[decodeURIComponent(kv[0])] = kv.length > 1 ? decodeURIComponent(kv[1]) : '';
+  });
+
+  // /api/health
+  if (pathOnly === '/api/health') return {status: 'ok'};
+
+  // /api/status - dashboard data
+  if (pathOnly === '/api/status') return getMockStatus();
+
+  // /api/zones GET - list zones
+  if (pathOnly === '/api/zones' && m === 'GET') return getMockZones();
+  // /api/zones POST - create zone
+  if (pathOnly === '/api/zones' && m === 'POST') return {success: true};
+
+  // /api/zones/<id> PUT/DELETE
+  if (/^\/api\/zones\/\w+$/.test(pathOnly) && (m === 'PUT' || m === 'DELETE')) return {success: true};
+
+  // /api/audio_devices
+  if (pathOnly === '/api/audio_devices') return getMockAudioDevices();
+
+  // /api/bells GET
+  if (pathOnly === '/api/bells' && m === 'GET') return getMockBells();
+  // /api/bells/upload POST
+  if (pathOnly === '/api/bells/upload') return {success: true};
+  // /api/bells/<id> DELETE
+  if (/^\/api\/bells\/\d+$/.test(pathOnly) && m === 'DELETE') return {success: true};
+
+  // /api/tasks/<id> GET
+  if (/^\/api\/tasks\/\d+$/.test(pathOnly) && m === 'GET') return getMockTask(parseInt(pathOnly.match(/\d+/)[0]));
+  // /api/tasks/<id> PUT/DELETE
+  if (/^\/api\/tasks\/\d+$/.test(pathOnly) && (m === 'PUT' || m === 'DELETE')) return {success: true};
+  // /api/tasks POST
+  if (pathOnly === '/api/tasks' && (m === 'POST' || m === 'PUT')) return {success: true};
+
+  // /api/schedules GET
+  if (pathOnly === '/api/schedules' && m === 'GET') return getMockSchedulesWithTasks();
+  // /api/schedules POST
+  if (pathOnly === '/api/schedules' && m === 'POST') return {success: true, id: 3};
+  // /api/schedules/<id> PUT/DELETE
+  if (/^\/api\/schedules\/\d+$/.test(pathOnly) && (m === 'PUT' || m === 'DELETE')) return {success: true};
+
+  // /api/holidays GET
+  if (pathOnly === '/api/holidays' && m === 'GET') return getMockHolidays(params);
+  // /api/holidays/sync POST
+  if (pathOnly === '/api/holidays/sync') return {success: true, message: '同步成功，2026年共有7个节假日'};
+  // /api/holidays/custom POST
+  if (pathOnly === '/api/holidays/custom' && m === 'POST') return {success: true};
+  // /api/holidays/custom/<id> PUT/DELETE
+  if (/^\/api\/holidays\/custom\/\d+$/.test(pathOnly) && (m === 'PUT' || m === 'DELETE')) return {success: true, message: '操作成功'};
+
+  // /api/bell_schedules GET
+  if (pathOnly === '/api/bell_schedules' && m === 'GET') return getMockBellSchedules();
+  // /api/bell_schedules POST
+  if (pathOnly === '/api/bell_schedules' && m === 'POST') return {success: true, message: '预约已添加'};
+  // /api/bell_schedules/<id> DELETE
+  if (/^\/api\/bell_schedules\/\d+$/.test(pathOnly) && m === 'DELETE') return {success: true};
+
+  // /api/today_control POST
+  if (pathOnly === '/api/today_control' && m === 'POST') return {success: true, message: '已设置今日状态'};
+  // /api/tomorrow_control POST
+  if (pathOnly === '/api/tomorrow_control' && m === 'POST') return {success: true, message: '已设置明日状态'};
+
+  // /api/bell/* actions
+  if (/^\/api\/bell\/\w+$/.test(pathOnly) && m === 'POST') return {success: true};
+
+  // /api/bell_bindings POST
+  if (pathOnly === '/api/bell_bindings' && m === 'POST') return {success: true};
+
+  // /api/ntp/sync POST
+  if (pathOnly === '/api/ntp/sync' && m === 'POST') return {success: true, offset: 0.023};
+
+  // /api/dingtalk/test POST
+  if (pathOnly === '/api/dingtalk/test' && m === 'POST') return {success: true};
+
+  // /api/logs GET
+  if (pathOnly === '/api/logs') return getMockLogs(params);
+
+  // /api/import POST
+  if (pathOnly === '/api/import') return {success: true, imported: 15};
+
+  // /api/export GET - don't trigger download
+  if (pathOnly === '/api/export') return {success: true};
+
+  // /api/settings GET
+  if (pathOnly === '/api/settings' && m === 'GET') return getMockSettings();
+  // /api/settings POST
+  if (pathOnly === '/api/settings' && m === 'POST') return {success: true};
+
+  // /api/schedule_tasks
+  if (pathOnly === '/api/schedule_tasks' && m === 'POST') return {success: true};
+  if (/^\/api\/schedule_tasks\/\d+$/.test(pathOnly) && (m === 'PUT' || m === 'DELETE')) return {success: true};
+
+  // Fallback
+  return {success: true};
+}
+
+// ===== MOCK DATA GENERATORS =====
+
+function getMockZones() {
+  return {
+    success: true,
+    zones: [
+      {id: 'A', name: '教学楼', volume: 75, enabled: true, audio_device: 'default', schedule_id: 1},
+      {id: 'B', name: '操场', volume: 85, enabled: true, audio_device: 'default', schedule_id: null},
+      {id: 'C', name: '宿舍楼', volume: 60, enabled: true, audio_device: 'default', schedule_id: null}
+    ]
+  };
+}
+
+function getMockAudioDevices() {
+  return {
+    success: true,
+    devices: [
+      {id: 'default', name: '默认设备（系统默认输出）'},
+      {id: 'name:Speakers (Realtek HD Audio output)', name: 'Speakers (Realtek HD Audio output)'},
+      {id: 'name:Headphones (Realtek HD Audio 2nd output)', name: 'Headphones (Realtek HD Audio 2nd output)'}
+    ]
+  };
+}
+
+function getMockBells() {
+  var bells = [
+    {id: 1, name: '上课铃', bell_type: 'class_start', filename: 'class_start.mp3'},
+    {id: 2, name: '下课铃', bell_type: 'class_end', filename: 'class_end.mp3'},
+    {id: 3, name: '预备铃', bell_type: 'prepare', filename: 'prepare.mp3'},
+    {id: 4, name: '课间操', bell_type: 'exercise', filename: 'exercise.mp3'},
+    {id: 5, name: '午餐铃', bell_type: 'lunch', filename: 'lunch.mp3'},
+    {id: 6, name: '放学铃', bell_type: 'school_end', filename: 'school_end.mp3'},
+    {id: 7, name: '紧急铃', bell_type: 'emergency', filename: 'emergency.mp3'},
+    {id: 8, name: '自定义铃声', bell_type: 'custom', filename: 'custom_bell.mp3'},
+    {id: 9, name: '集会铃', bell_type: 'assembly', filename: 'assembly.mp3'},
+    {id: 10, name: '眼保健操', bell_type: 'eye_exercise', filename: 'eye_exercise.mp3'},
+    {id: 11, name: '升旗铃', bell_type: 'flag_raising', filename: 'flag_raising.mp3'},
+    {id: 12, name: '起床铃', bell_type: 'wake_up', filename: 'wake_up.mp3'},
+    {id: 13, name: '就寝铃', bell_type: 'bedtime', filename: 'bedtime.mp3'}
+  ];
+  var bindings = {
+    'A_class_start': 1, 'A_class_end': 2, 'A_prepare': 3, 'A_exercise': 4, 'A_lunch': 5, 'A_school_end': 6, 'A_emergency': 7, 'A_custom': 8, 'A_assembly': 9, 'A_eye_exercise': 10, 'A_flag_raising': 11,
+    'B_class_start': 1, 'B_class_end': 2, 'B_exercise': 4, 'B_emergency': 7,
+    'C_emergency': 7, 'C_wake_up': 12, 'C_bedtime': 13
+  };
+  return {success: true, bells: bells, bindings: bindings};
+}
+
+function getMockSchedules() {
+  return [
+    {id: 1, name: '夏季作息表', is_active: true, task_count: 23},
+    {id: 2, name: '冬季作息表', is_active: false, task_count: 21}
+  ];
+}
+
+function getMockSchedulesWithTasks() {
+  var schedules = getMockSchedules();
+  var zoneTasks = {
+    A: [
+      {id: 1, zone_id: 'A', time: '08:00', bell_type: 'class_start', task_name: '第一节课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 2, zone_id: 'A', time: '08:45', bell_type: 'class_end', task_name: '第一节课下课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 3, zone_id: 'A', time: '08:55', bell_type: 'class_start', task_name: '第二节课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 4, zone_id: 'A', time: '09:40', bell_type: 'class_end', task_name: '第二节课下课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 5, zone_id: 'A', time: '09:40', bell_type: 'exercise', task_name: '课间操', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 6, zone_id: 'A', time: '10:00', bell_type: 'class_start', task_name: '第三节课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 7, zone_id: 'A', time: '10:45', bell_type: 'class_end', task_name: '第三节课下课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 8, zone_id: 'A', time: '10:55', bell_type: 'class_start', task_name: '第四节课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 9, zone_id: 'A', time: '11:40', bell_type: 'class_end', task_name: '第四节课下课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 10, zone_id: 'A', time: '11:40', bell_type: 'lunch', task_name: '午餐', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 11, zone_id: 'A', time: '14:00', bell_type: 'prepare', task_name: '预备铃', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 12, zone_id: 'A', time: '14:10', bell_type: 'class_start', task_name: '第五节课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 13, zone_id: 'A', time: '14:55', bell_type: 'class_end', task_name: '第五节课下课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 14, zone_id: 'A', time: '15:05', bell_type: 'class_start', task_name: '第六节课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 15, zone_id: 'A', time: '15:50', bell_type: 'class_end', task_name: '第六节课下课', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 16, zone_id: 'A', time: '17:30', bell_type: 'school_end', task_name: '放学', days: '1,2,3,4,5', one_time_date: ''}
+    ],
+    B: [
+      {id: 17, zone_id: 'B', time: '09:40', bell_type: 'exercise', task_name: '课间操（操场）', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 18, zone_id: 'B', time: '10:00', bell_type: 'class_start', task_name: '体育课', days: '1,2,3,4,5', one_time_date: ''}
+    ],
+    C: [
+      {id: 19, zone_id: 'C', time: '06:30', bell_type: 'wake_up', task_name: '起床', days: '1,2,3,4,5', one_time_date: ''},
+      {id: 20, zone_id: 'C', time: '22:00', bell_type: 'bedtime', task_name: '就寝', days: '1,2,3,4,5', one_time_date: ''}
+    ]
+  };
+  schedules[0].zone_tasks = zoneTasks;
+  schedules[1].zone_tasks = zoneTasks;
+  return {success: true, schedules: schedules};
+}
+
+function getMockStatus() {
+  var now = new Date();
+  var months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  var dateStr = now.getFullYear() + '年' + months[now.getMonth()] + now.getDate() + '日';
+  var wdNames = ['周日','周一','周二','周三','周四','周五','周六'];
+  var wd = wdNames[now.getDay()];
+  var dateISO = now.toISOString().slice(0, 10);
+  var lastSync = dateISO + ' 06:00:23';
+
+  return {
+    success: true,
+    current_date: dateStr,
+    weekday: wd,
+    zones: [
+      {
+        id: 'A', name: '教学楼', volume: 75, enabled: true, audio_device: 'default', schedule_id: 1,
+        today: {status_type: 'normal', status_text: '正常打铃'},
+        tomorrow_override: null
+      },
+      {
+        id: 'B', name: '操场', volume: 85, enabled: true, audio_device: 'default', schedule_id: null,
+        today: {status_type: 'normal', status_text: '正常打铃'},
+        tomorrow_override: null
+      },
+      {
+        id: 'C', name: '宿舍楼', volume: 60, enabled: true, audio_device: 'default', schedule_id: null,
+        today: {status_type: 'normal', status_text: '正常打铃'},
+        tomorrow_override: null
+      }
+    ],
+    ntp: {status: 'synced', offset: 0.015, last_sync: lastSync},
+    schedules: getMockSchedules(),
+    next_bells: [
+      {zone_name: '教学楼', time: '09:40', name: '课间操'},
+      {zone_name: '操场', time: '10:50', name: '课间操'},
+      {zone_name: '宿舍楼', time: '--:--', name: '--'}
+    ],
+    global_paused: false,
+    active_schedule: '夏季作息表'
+  };
+}
+
+function getMockTask(id) {
+  var tasks = {
+    1: {id: 1, zone_id: 'A', time: '08:00', bell_type: 'class_start', task_name: '第一节课', days: '1,2,3,4,5', one_time_date: ''},
+    2: {id: 2, zone_id: 'A', time: '08:45', bell_type: 'class_end', task_name: '第一节课下课', days: '1,2,3,4,5', one_time_date: ''}
+  };
+  var t = tasks[id] || tasks[1];
+  return {success: true, task: t};
+}
+
+function getMockSettings() {
+  return {
+    success: true,
+    settings: {
+      holiday_api_url: 'https://timor.tech/api/holiday/year/{}',
+      ntp_server: 'ntp.aliyun.com',
+      ntp_enabled: '1',
+      ntp_last_sync: '2026-06-16 06:00:23',
+      dingtalk_webhook: '',
+      dingtalk_enabled: '0'
+    }
+  };
+}
+
+function getMockLogs(params) {
+  var cat = params.category || '';
+  var allLogs = [
+    {timestamp: '2026-06-16T08:00:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-16T08:00:01', level: 'INFO', category: 'bell', message: '操场 上课铃 已打铃'},
+    {timestamp: '2026-06-16T08:45:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-16T08:55:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-16T09:40:00', level: 'INFO', category: 'bell', message: '教学楼 课间操 已打铃'},
+    {timestamp: '2026-06-16T10:00:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-16T10:45:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-16T10:55:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-16T11:40:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-16T11:40:01', level: 'INFO', category: 'bell', message: '教学楼 午餐铃 已打铃'},
+    {timestamp: '2026-06-16T14:00:00', level: 'INFO', category: 'bell', message: '教学楼 预备铃 已打铃'},
+    {timestamp: '2026-06-16T14:10:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-16T14:55:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-16T15:05:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-16T15:50:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-16T17:30:00', level: 'INFO', category: 'bell', message: '教学楼 放学铃 已打铃'},
+    {timestamp: '2026-06-16T06:30:00', level: 'INFO', category: 'bell', message: '宿舍楼 起床铃 已打铃'},
+    {timestamp: '2026-06-16T09:40:01', level: 'INFO', category: 'bell', message: '操场 课间操 已打铃'},
+    {timestamp: '2026-06-15T08:00:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-15T08:45:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-15T08:55:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-15T09:40:00', level: 'INFO', category: 'bell', message: '教学楼 课间操 已打铃'},
+    {timestamp: '2026-06-15T10:00:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-15T10:45:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-15T10:55:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-15T11:40:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-15T14:00:00', level: 'INFO', category: 'bell', message: '教学楼 预备铃 已打铃'},
+    {timestamp: '2026-06-15T14:10:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-15T14:55:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-15T15:05:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-15T15:50:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-15T17:30:00', level: 'INFO', category: 'bell', message: '教学楼 放学铃 已打铃'},
+    {timestamp: '2026-06-16T08:30:00', level: 'INFO', category: 'system', message: '系统健康检查通过'},
+    {timestamp: '2026-06-16T06:00:00', level: 'INFO', category: 'system', message: 'NTP校时完成，偏差0.015s'},
+    {timestamp: '2026-06-16T00:00:00', level: 'INFO', category: 'system', message: '新的一天开始，加载课表任务'},
+    {timestamp: '2026-06-15T18:00:00', level: 'WARN', category: 'exception', message: '宿舍楼 就寝铃 文件不存在，静默跳过'},
+    {timestamp: '2026-06-15T12:00:00', level: 'INFO', category: 'manual', message: '管理员手动触发 紧急铃（测试）'},
+    {timestamp: '2026-06-15T10:30:00', level: 'INFO', category: 'settings', message: '课表「夏季作息表」已更新，修改15条任务'},
+    {timestamp: '2026-06-14T08:00:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-14T08:45:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-14T09:40:00', level: 'INFO', category: 'bell', message: '教学楼 课间操 已打铃'},
+    {timestamp: '2026-06-14T10:00:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-14T10:45:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-14T11:40:00', level: 'INFO', category: 'bell', message: '教学楼 午餐铃 已打铃'},
+    {timestamp: '2026-06-14T14:00:00', level: 'INFO', category: 'bell', message: '教学楼 预备铃 已打铃'},
+    {timestamp: '2026-06-14T14:10:00', level: 'INFO', category: 'bell', message: '教学楼 上课铃 已打铃'},
+    {timestamp: '2026-06-14T14:55:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-14T15:50:00', level: 'INFO', category: 'bell', message: '教学楼 下课铃 已打铃'},
+    {timestamp: '2026-06-14T17:30:00', level: 'INFO', category: 'bell', message: '教学楼 放学铃 已打铃'},
+    {timestamp: '2026-06-14T00:00:00', level: 'INFO', category: 'system', message: '新的一天开始，加载课表任务'}
+  ];
+  var filtered = cat ? allLogs.filter(function(l) { return l.category === cat; }) : allLogs;
+  filtered = filtered.slice(0, 50);
+  return {success: true, logs: filtered};
+}
+
+function getMockHolidays(params) {
+  var y = parseInt(params.year) || 2026;
+  return {
+    success: true,
+    upcoming: [
+      {date: y + '-06-19', weekday: '周五', name: '端午节', type: 'holiday', days_away: 3},
+      {date: y + '-09-15', weekday: '周二', name: '中秋节', type: 'holiday', days_away: 91},
+      {date: y + '-10-01', weekday: '周四', name: '国庆节', type: 'holiday', days_away: 107}
+    ],
+    holidays: [
+      {id: 1, date: y + '-01-01', name: '元旦', type: 'holiday', custom: false},
+      {id: 2, date: y + '-02-17', name: '春节', type: 'holiday', custom: false},
+      {id: 3, date: y + '-02-18', name: '春节初二', type: 'holiday', custom: false},
+      {id: 4, date: y + '-02-19', name: '春节初三', type: 'holiday', custom: false},
+      {id: 5, date: y + '-04-05', name: '清明节', type: 'holiday', custom: false},
+      {id: 6, date: y + '-05-01', name: '劳动节', type: 'holiday', custom: false},
+      {id: 7, date: y + '-06-19', name: '端午节', type: 'holiday', custom: false},
+      {id: 8, date: y + '-09-15', name: '中秋节', type: 'holiday', custom: false},
+      {id: 9, date: y + '-10-01', name: '国庆节', type: 'holiday', custom: false},
+      {id: 10, date: y + '-10-02', name: '国庆假期', type: 'holiday', custom: false},
+      {id: 11, date: y + '-10-03', name: '国庆假期', type: 'holiday', custom: false},
+      {id: 12, date: y + '-04-26', name: '劳动节调休', type: 'workday', custom: true},
+      {id: 13, date: y + '-09-27', name: '国庆调休', type: 'workday', custom: true}
+    ]
+  };
+}
+
+function getMockBellSchedules() {
+  var now = new Date();
+  var tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  var dayAfter = new Date(now);
+  dayAfter.setDate(dayAfter.getDate() + 2);
+  var f = function(d) { return d.toISOString().slice(0,10); };
+  return {
+    success: true,
+    schedules: [
+      {id: 1, date: f(now), zone_id: 'A', action: 'force_ring', schedule_id: 0, reason: '正常上课', remind_enabled: true},
+      {id: 2, date: f(tomorrow), zone_id: 'B', action: 'force_no_ring', schedule_id: 0, reason: '操场维护', remind_enabled: false},
+      {id: 3, date: f(tomorrow), zone_id: 'C', action: 'force_no_ring', schedule_id: 0, reason: '宿舍消毒', remind_enabled: true},
+      {id: 4, date: f(dayAfter), zone_id: 'A', action: 'force_ring', schedule_id: 1, reason: '期末考试调整', remind_enabled: true}
+    ]
+  };
+}
+
+// ===== APPLICATION CODE =====
+var PT={dashboard:'系统总览',schedules:'课表管理',zones:'区域控制',bells:'铃声管理',holidays:'节假日',schedule:'预约控制',settings:'系统设置',logs:'运行日志'};
+var BT={class_start:'上课铃',class_end:'下课铃',prepare:'预备铃',exercise:'课间操',lunch:'午餐铃',school_end:'放学铃',emergency:'紧急铃',custom:'自定义',assembly:'集会',eye_exercise:'眼保健操',flag_raising:'升旗',wake_up:'起床',bedtime:'就寝'};
+var ZN={};
+var ZONES=[];
+var DN=['周一','周二','周三','周四','周五','周六','周日'];
+var D='';
+
+function toast(msg, isErr) {
+  showToast(msg, isErr);
+}
+
+function initZones() {
+  return api('/api/zones').then(function(d) {
+    if (d && d.success) {
+      ZONES = d.zones;
+      ZN = {};
+      d.zones.forEach(function(z) { ZN[z.id] = z.name; });
+    }
+  });
+}
+
+function updateClock() {
+  var now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('zh-CN', {hour12: false});
+  document.getElementById('dateDisplay').textContent = now.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+document.querySelectorAll('.nav-item').forEach(function(it) {
+  it.onclick = function() {
+    document.querySelectorAll('.nav-item').forEach(function(i) { i.classList.remove('active'); });
+    it.classList.add('active');
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById('page-' + it.dataset.page).classList.add('active');
+    document.getElementById('pageTitle').textContent = PT[it.dataset.page];
+    loadPage(it.dataset.page);
+  };
+});
+
+function loadPage(pg) {
+  if (pg === 'dashboard') loadDashboard();
+  else if (pg === 'schedules') loadSchedules();
+  else if (pg === 'zones') loadZones();
+  else if (pg === 'bells') loadBells();
+  else if (pg === 'holidays') loadHolidays();
+  else if (pg === 'schedule') loadSchedulesPage();
+  else if (pg === 'settings') loadSettings();
+  else if (pg === 'logs') loadLogs();
+}
+
+// ===== Dashboard =====
+async function loadDashboard() {
+  try {
+    var d = await api('/api/status');
+    if (!d || !d.success) return;
+
+    var nb = document.getElementById('ntpBadge');
+    if (d.ntp && d.ntp.status === 'synced') {
+      nb.innerHTML = '<span class="dot"></span>NTP已同步' + (d.ntp.offset != null ? ' (' + d.ntp.offset + 's)' : '');
+      nb.classList.remove('offline');
+    } else {
+      nb.innerHTML = '<span class="dot"></span>未同步';
+      nb.classList.add('offline');
+    }
+
+    document.getElementById('todayDateDesc').textContent = d.current_date + ' ' + d.weekday;
+    var td = new Date();
+    td.setDate(td.getDate() + 1);
+    var tmStr = td.toISOString().slice(0, 10);
+    var tmWd = DN[td.getDay() ? td.getDay() - 1 : 6];
+    document.getElementById('tomorrowDateDesc').textContent = tmStr + ' ' + tmWd;
+
+    var th = '';
+    d.zones.forEach(function(z) {
+      var ts = z.today || {};
+      var stTag = ts.status_type === 'normal' ? 'tag-green' : ts.status_type === 'holiday' ? 'tag-orange' : ts.status_type === 'ring' ? 'tag-green' : 'tag-red';
+      var stText = ts.status_text || '--';
+      th += '<div class="zone-row"><div class="zone-info"><span class="zname">' + z.name + '</span><span class="tag ' + stTag + '">' + stText + '</span></div>';
+      th += '<div class="zone-controls">';
+      th += '<button class="btn btn-success btn-sm" onclick="todayCtrl(\'' + z.id + '\',\'ring\')">今日打铃</button>';
+      th += '<select id="todaySched_' + z.id + '" style="width:140px;font-size:12px;padding:2px 6px"><option value="0"' + (z.schedule_id ? '' : ' selected') + '>默认课表</option>';
+      if (d.schedules) d.schedules.forEach(function(s) { th += '<option value="' + s.id + '"' + (z.schedule_id === s.id ? ' selected' : '') + '>' + s.name + (s.is_active ? ' [默认]' : '') + '</option>'; });
+      th += '</select>';
+      th += '<button class="btn btn-danger btn-sm" onclick="todayCtrl(\'' + z.id + '\',\'no_ring\')">今日不打铃</button>';
+      th += '<button class="btn btn-ghost btn-sm" onclick="todayCtrl(\'' + z.id + '\',\'auto\')">恢复自动</button>';
+      th += '</div></div>';
+    });
+    document.getElementById('todayZoneRows').innerHTML = th;
+
+    var tmh = '';
+    d.zones.forEach(function(z) {
+      var tmOv = z.tomorrow_override;
+      var tmTag = tmOv === 'force_ring' ? 'tag-green' : tmOv === 'force_no_ring' ? 'tag-red' : 'tag-blue';
+      var tmText = tmOv === 'force_ring' ? '明日打铃' : tmOv === 'force_no_ring' ? '明日不打铃' : '自动';
+      tmh += '<div class="zone-row"><div class="zone-info"><span class="zname">' + z.name + '</span><span class="tag ' + tmTag + '">' + tmText + '</span></div>';
+      tmh += '<div class="zone-controls">';
+      tmh += '<button class="btn btn-success btn-sm" onclick="tomorrowCtrl(\'' + z.id + '\',\'ring\')">明日打铃</button>';
+      tmh += '<select id="tmSched_' + z.id + '" style="width:140px;font-size:12px;padding:2px 6px"><option value="0"' + (z.schedule_id ? '' : ' selected') + '>默认课表</option>';
+      if (d.schedules) d.schedules.forEach(function(s) { tmh += '<option value="' + s.id + '"' + (z.schedule_id === s.id ? ' selected' : '') + '>' + s.name + (s.is_active ? ' [默认]' : '') + '</option>'; });
+      tmh += '</select>';
+      tmh += '<button class="btn btn-danger btn-sm" onclick="tomorrowCtrl(\'' + z.id + '\',\'no_ring\')">明日不打铃</button>';
+      tmh += '<button class="btn btn-ghost btn-sm" onclick="tomorrowCtrl(\'' + z.id + '\',\'auto\')">恢复自动</button>';
+      tmh += '</div></div>';
+    });
+    document.getElementById('tomorrowZoneRows').innerHTML = tmh;
+
+    var nbs = d.next_bells || [];
+    var nbHtml = '';
+    if (nbs.length === 0) {
+      nbHtml = '<div style="padding:16px;color:var(--text-quaternary);text-align:center">暂无打铃计划</div>';
+    } else {
+      nbHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">';
+      nbs.forEach(function(nb) {
+        var isActive = nb.time !== '--:--';
+        nbHtml += '<div style="background:var(--bg-spot);border-radius:var(--radius-sm);padding:14px;border:1px solid ' + (isActive ? 'var(--primary-border)' : 'var(--border-secondary)') + '">';
+        nbHtml += '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">' + nb.zone_name + '</div>';
+        nbHtml += '<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:' + (isActive ? 'var(--primary)' : 'var(--text-quaternary)') + '">' + nb.time + '</div>';
+        nbHtml += '<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">' + (nb.name || '--') + '</div>';
+        nbHtml += '</div>';
+      });
+      nbHtml += '</div>';
+    }
+
+    var alertH = '';
+    if (d.global_paused) alertH = '<div class="alert alert-error"><strong>系统已暂停</strong>，打铃不会执行</div>';
+    document.getElementById('dashAlert').innerHTML = alertH;
+
+    document.getElementById('statsGrid').innerHTML =
+      '<div class="stat-card"><div class="stat-icon blue"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></div><div class="stat-label">当前课表</div><div class="stat-value">' + d.active_schedule + '</div></div>' +
+      '<div class="stat-card"><div class="stat-icon green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="stat-label">系统状态</div><div class="stat-value" style="color:' + (d.global_paused ? 'var(--error)' : 'var(--success)') + '">' + (d.global_paused ? '已暂停' : '运行中') + '</div></div>' +
+      '<div class="stat-card"><div class="stat-icon orange"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="stat-label">下次打铃</div><div class="stat-value" style="font-size:22px">' + (nbs.length > 0 && nbs[0].time !== '--:--' ? nbs[0].time : '--:--') + '</div><div class="stat-sub">' + (nbs.length > 0 ? nbs[0].zone_name + ' ' + nbs[0].name : '暂无') + '</div></div>' +
+      '<div class="stat-card"><div class="stat-icon ' + (d.ntp && d.ntp.status === 'synced' ? 'green' : 'red') + '"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><div class="stat-label">NTP校时</div><div class="stat-value" style="font-size:16px">' + (d.ntp ? d.ntp.last_sync : '--') + '</div><div class="stat-sub">' + (d.ntp && d.ntp.offset != null ? '偏差 ' + d.ntp.offset + 's' : '') + '</div></div>';
+
+    document.getElementById('nextBellCards').innerHTML = nbHtml;
+  } catch(e) {
+    toast('加载仪表盘失败', true);
+  }
+}
+
+async function todayCtrl(zid, act) {
+  var sid = parseInt(document.getElementById('todaySched_' + zid).value) || 0;
+  var d = await api('/api/today_control', 'POST', {zone_id: zid, action: act, schedule_id: sid});
+  toast(d && d.success ? d.message : '操作成功', !(d && d.success));
+  loadDashboard();
+}
+
+async function tomorrowCtrl(zid, act) {
+  var sid = parseInt(document.getElementById('tmSched_' + zid).value) || 0;
+  var d = await api('/api/tomorrow_control', 'POST', {zone_id: zid, action: act, schedule_id: sid});
+  toast(d && d.success ? d.message : '操作成功', !(d && d.success));
+  loadDashboard();
+}
+
+// ===== Global Actions =====
+async function doAction(a) {
+  await api('/api/bell/' + a, 'POST', {});
+  toast(a === 'pause' ? '已暂停' : a === 'resume' ? '已恢复' : '已停止');
+  loadDashboard();
+}
+function quickRing(t) {
+  api('/api/bell/ring', 'POST', {zone_id: 'A', bell_type: t});
+  toast('打铃：' + BT[t]);
+}
+
+// ===== Schedules =====
+async function loadSchedules() {
+  var d = await api('/api/schedules');
+  if (!d || !d.success) return;
+  var sel = document.getElementById('schedSelect');
+  sel.innerHTML = '';
+  d.schedules.forEach(function(s) {
+    sel.innerHTML += '<option value="' + s.id + '"' + (s.is_active ? ' selected' : '') + '>' + s.name + (s.is_active ? ' [默认]' : '') + ' (' + s.task_count + '条)</option>';
+  });
+  var zs = document.getElementById('taskZoneFilter');
+  zs.innerHTML = '<option value="">全部区域</option>';
+  ZONES.forEach(function(z) { zs.innerHTML += '<option value="' + z.id + '">' + z.name + '</option>'; });
+  loadTasks();
+}
+
+async function loadTasks() {
+  var sid = document.getElementById('schedSelect').value;
+  var zf = document.getElementById('taskZoneFilter').value;
+  var d = await api('/api/schedules');
+  if (!d || !d.success) return;
+  var sched = d.schedules.find(function(s) { return s.id == sid; });
+  if (!sched) return;
+  var tasks = [];
+  var zt = sched.zone_tasks || {};
+  if (zf) { tasks = zt[zf] || []; } else { for (var k in zt) tasks = tasks.concat(zt[k]); }
+  tasks.sort(function(a, b) { return a.time > b.time ? 1 : -1; });
+  var h = '';
+  tasks.forEach(function(t) {
+    var zoneName = ZN[t.zone_id] || '区域' + t.zone_id;
+    h += '<tr><td><span class="tag tag-blue">' + zoneName + '</span></td><td><strong style="font-family:var(--mono)">' + t.time + '</strong></td><td><span class="tag tag-orange">' + (BT[t.bell_type] || t.bell_type) + '</span></td><td>' + t.task_name + '</td><td style="color:var(--text-tertiary);font-size:12px">' + (t.days ? t.days.split(',').map(function(d) { return DN[parseInt(d) - 1]; }).join('、') : '--') + '</td><td><button class="btn btn-primary btn-sm" onclick="editTask(' + t.id + ')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteTask(' + t.id + ')">删除</button></td></tr>';
+  });
+  document.getElementById('taskTbody').innerHTML = h || '<tr><td colspan="6" style="text-align:center;color:var(--text-quaternary)">暂无任务</td></tr>';
+}
+
+async function createSchedule() {
+  var n = prompt('课表名称：');
+  if (!n) return;
+  await api('/api/schedules', 'POST', {name: n});
+  toast('创建成功');
+  loadSchedules();
+}
+
+async function activateSchedule() {
+  var sid = document.getElementById('schedSelect').value;
+  await api('/api/schedules/' + sid, 'PUT', {activate: true});
+  toast('已设为默认课表');
+  loadSchedules();
+}
+
+async function deleteSchedule() {
+  var sid = document.getElementById('schedSelect').value;
+  if (!confirm('确认删除？')) return;
+  await api('/api/schedules/' + sid, 'DELETE');
+  toast('已删除');
+  loadSchedules();
+}
+
+var BELLS = [];
+
+function loadBellsForEditor() {
+  return api('/api/bells').then(function(d) {
+    if (d && d.success) { BELLS = d.bells; }
+  });
+}
+
+function openTaskModal(taskId) {
+  document.getElementById('taskModal').style.display = 'flex';
+  var zSel = document.getElementById('taskZone');
+  zSel.innerHTML = '';
+  for (var i = 0; i < ZONES.length; i++) {
+    zSel.innerHTML += '<option value="' + ZONES[i].id + '">' + ZONES[i].name + '</option>';
+  }
+  zSel.innerHTML += '<option value="ALL">全区域</option>';
+  var bSel = document.getElementById('taskBellType');
+  bSel.innerHTML = '';
+  for (var i = 0; i < BELLS.length; i++) {
+    bSel.innerHTML += '<option value="' + BELLS[i].id + '">' + BELLS[i].name + ' (' + BELLS[i].filename + ')</option>';
+  }
+  if (taskId) {
+    document.getElementById('taskModalTitle').textContent = '编辑任务';
+    document.getElementById('taskId').value = taskId;
+    api('/api/tasks/' + taskId).then(function(d) {
+      if (d && d.success) {
+        document.getElementById('taskZone').value = d.task.zone_id;
+        document.getElementById('taskTime').value = d.task.time;
+        if (d.task.bell_id) {
+          document.getElementById('taskBellType').value = d.task.bell_id;
+        } else {
+          var matched = BELLS.find(function(b) { return b.bell_type === d.task.bell_type; });
+          if (matched) document.getElementById('taskBellType').value = matched.id;
+        }
+        document.getElementById('taskName').value = d.task.task_name;
+        var days = d.task.days ? d.task.days.split(',') : [];
+        document.querySelectorAll('.taskDays').forEach(function(cb) { cb.checked = days.includes(cb.value); });
+        document.getElementById('taskOneTime').value = d.task.one_time_date || '';
+      }
+    });
+  } else {
+    document.getElementById('taskModalTitle').textContent = '添加任务';
+    document.getElementById('taskId').value = '';
+    document.getElementById('taskZone').value = ZONES.length > 0 ? ZONES[0].id : 'A';
+    document.getElementById('taskTime').value = '08:00';
+    document.getElementById('taskBellType').value = BELLS.length > 0 ? BELLS[0].id : '';
+    document.getElementById('taskName').value = '';
+    selectWorkdays();
+    document.getElementById('taskOneTime').value = '';
+  }
+}
+
+function closeTaskModal() { document.getElementById('taskModal').style.display = 'none'; }
+function selectAllDays() { document.querySelectorAll('.taskDays').forEach(function(cb) { cb.checked = true; }); }
+function selectWorkdays() { document.querySelectorAll('.taskDays').forEach(function(cb) { cb.checked = ['1','2','3','4','5'].includes(cb.value); }); }
+function selectWeekend() { document.querySelectorAll('.taskDays').forEach(function(cb) { cb.checked = ['6','7'].includes(cb.value); }); }
+
+async function saveTask() {
+  var taskId = document.getElementById('taskId').value;
+  var zoneId = document.getElementById('taskZone').value;
+  var time = document.getElementById('taskTime').value;
+  var bellId = parseInt(document.getElementById('taskBellType').value) || 0;
+  var taskName = document.getElementById('taskName').value;
+  var oneTime = document.getElementById('taskOneTime').value;
+  var days = [];
+  document.querySelectorAll('.taskDays:checked').forEach(function(cb) { days.push(cb.value); });
+  if (!time) { toast('请设置打铃时间', true); return; }
+  if (!taskName) { toast('请填写任务名称', true); return; }
+  if (days.length === 0 && !oneTime) { toast('请选择适用日期或设置一次性日期', true); return; }
+  var bell = BELLS.find(function(b) { return b.id === bellId; });
+  var bellType = bell ? bell.bell_type : 'custom';
+  var sid = document.getElementById('schedSelect').value;
+  var data = {schedule_id: sid, zone_id: zoneId, time: time, bell_type: bellType, bell_id: bellId, task_name: taskName, days: days.join(','), one_time_date: oneTime};
+  if (zoneId === 'ALL') {
+    var allZones = ZONES.map(function(z) { return z.id; });
+    for (var i = 0; i < allZones.length; i++) {
+      var zData = {schedule_id: sid, zone_id: allZones[i], time: time, bell_type: bellType, bell_id: bellId, task_name: taskName, days: days.join(','), one_time_date: oneTime};
+      if (taskId) { await api('/api/tasks/' + taskId, 'PUT', zData); taskId = null; } else { await api('/api/tasks', 'POST', zData); }
+    }
+    toast('已更新全区域任务');
+  } else {
+    if (taskId) { await api('/api/tasks/' + taskId, 'PUT', data); } else { await api('/api/tasks', 'POST', data); }
+    toast('保存成功');
+  }
+  closeTaskModal();
+  loadTasks();
+}
+
+function addTask() { openTaskModal(null); }
+function editTask(tid) { openTaskModal(tid); }
+
+async function deleteTask(tid) {
+  if (!confirm('确认删除此任务？')) return;
+  await api('/api/tasks/' + tid, 'DELETE');
+  toast('已删除');
+  loadTasks();
+}
+
+function exportExcel() {
+  var sid = document.getElementById('schedSelect').value;
+  if (!sid) { toast('请先选择课表', true); return; }
+  toast('导出成功（演示模式）');
+}
+
+function showImportDialog() {
+  toast('导入功能（演示模式），模拟导入15条任务');
+  setTimeout(function() {
+    toast('导入成功！共15条任务');
+    loadSchedules();
+  }, 500);
+}
+
+// ===== Zones =====
+async function loadZones() {
+  var zd = await api('/api/zones');
+  if (!zd || !zd.success) return;
+  var dd = await api('/api/audio_devices');
+  var sd = await api('/api/schedules');
+  var h = '';
+  var devices = dd && dd.success ? dd.devices : [];
+  var schedules = sd && sd.success ? sd.schedules : [];
+  zd.zones.forEach(function(z) {
+    h += '<div class="card" style="border-top:3px solid ' + (z.id === 'A' ? 'var(--error)' : z.id === 'B' ? 'var(--primary)' : 'var(--success)') + '">';
+    h += '<div class="card-header"><div class="card-title">' + z.name + '</div><span class="tag ' + (z.enabled ? 'tag-green' : 'tag-red') + '">' + (z.enabled ? '已启用' : '已禁用') + '</span></div>';
+    h += '<div class="form-group"><label class="form-label">名称</label><input type="text" value="' + z.name + '" onchange="updateZone(\'' + z.id + '\',\'name\',this.value)"></div>';
+    h += '<div class="form-group"><label class="form-label">音量 <strong id="volLabel_' + z.id + '">' + z.volume + '%</strong></label><input type="range" min="0" max="100" value="' + z.volume + '" oninput="document.getElementById(\'volLabel_' + z.id + '\').textContent=this.value+\'%\'" onchange="updateZone(\'' + z.id + '\',\'volume\',this.value)" style="width:100%"></div>';
+    var curDev = z.audio_device || 'default';
+    h += '<div class="form-group"><label class="form-label">音频设备 <button class="btn btn-sm btn-outline" onclick="refreshAudioDevices(\'' + z.id + '\')" style="font-size:11px">刷新</button></label><select id="devSel_' + z.id + '" onchange="updateZone(\'' + z.id + '\',\'audio_device\',this.value)" style="width:100%">';
+    devices.forEach(function(d) { h += '<option value="' + d.id + '"' + (curDev === d.id ? ' selected' : '') + '>' + d.name + '</option>'; });
+    h += '</select></div>';
+    h += '<div class="form-group"><label class="form-label">默认课表</label><select onchange="updateZone(\'' + z.id + '\',\'schedule_id\',this.value)" style="width:100%"><option value="0">跟随系统默认</option>';
+    schedules.forEach(function(s) { h += '<option value="' + s.id + '"' + (z.schedule_id === s.id ? ' selected' : '') + '>' + s.name + (s.is_active ? ' [系统默认]' : '') + '</option>'; });
+    h += '</select></div>';
+    h += '<div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" ' + (z.enabled ? 'checked' : '') + ' onchange="updateZone(\'' + z.id + '\',\'enabled\',this.checked)"><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用此区域</span></label></div>';
+    h += '<div class="quick-row"><button class="btn btn-danger" onclick="doActionZone(\'pause\',\'' + z.id + '\')">暂停</button><button class="btn btn-success" onclick="doActionZone(\'resume\',\'' + z.id + '\')">恢复</button><button class="btn btn-primary" onclick="quickRingZone(\'' + z.id + '\')">测试打铃</button></div>';
+    h += '<div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><button class="btn btn-danger btn-sm" onclick="deleteZone(\'' + z.id + '\',\'' + z.name + '\')">删除区域</button><button class="btn btn-primary btn-sm" onclick="saveZone(\'' + z.id + '\')">保存设置</button></div>';
+    h += '</div>';
+  });
+  document.getElementById('zonesGrid').innerHTML = h;
+}
+
+async function refreshAudioDevices(zid) {
+  var d = await api('/api/audio_devices');
+  if (!d || !d.success) return;
+  var sel = document.getElementById('devSel_' + zid);
+  if (!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '';
+  d.devices.forEach(function(dev) { sel.innerHTML += '<option value="' + dev.id + '"' + (cur === dev.id ? ' selected' : '') + '>' + dev.name + '</option>'; });
+  toast('音频设备已刷新');
+}
+
+async function updateZone(zid, key, val) { var d = {}; d[key] = val; await api('/api/zones/' + zid, 'PUT', d); toast(key === 'volume' ? '音量已更新' : '已更新'); }
+
+function doActionZone(a, zid) {
+  api('/api/bell/' + a, 'POST', {zone_id: zid}).then(function(d) {
+    toast((ZN[zid] || zid) + ' ' + (d && d.success ? (a === 'pause' ? '已暂停' : a === 'resume' ? '已恢复' : '已停止') : '操作成功'), !(d && d.success));
+  });
+}
+function quickRingZone(zid) { api('/api/bell/ring', 'POST', {zone_id: zid, bell_type: 'class_start'}); toast((ZN[zid] || zid) + ' 测试打铃'); }
+
+async function openZoneDialog() {
+  var d = await api('/api/audio_devices');
+  var sel = document.getElementById('zoneNewDevice');
+  sel.innerHTML = '<option value="default">默认设备（系统默认输出）</option>';
+  if (d && d.success) d.devices.forEach(function(dev) { sel.innerHTML += '<option value="' + dev.id + '">' + dev.name + '</option>'; });
+  document.getElementById('zoneNewId').value = '';
+  document.getElementById('zoneNewName').value = '';
+  document.getElementById('zoneModal').style.display = 'flex';
+}
+function closeZoneDialog() { document.getElementById('zoneModal').style.display = 'none'; }
+async function createZone() {
+  var zid = document.getElementById('zoneNewId').value.trim().toUpperCase();
+  var name = document.getElementById('zoneNewName').value.trim();
+  var dev = document.getElementById('zoneNewDevice').value;
+  if (!zid) { toast('请输入区域ID', true); return; }
+  if (!name) { toast('请输入区域名称', true); return; }
+  await api('/api/zones', 'POST', {id: zid, name: name, audio_device: dev});
+  toast('区域 ' + zid + ' 创建成功');
+  closeZoneDialog();
+  loadZones();
+  initZones();
+}
+async function deleteZone(zid, zname) {
+  if (!confirm('确认删除区域「' + zname + '」吗？\n该区域的所有绑定、任务、例外设置将被一并删除！')) return;
+  await api('/api/zones/' + zid, 'DELETE');
+  toast('已删除区域 ' + zname);
+  loadZones();
+  initZones();
+}
+async function saveZone(zid) { await loadZones(); toast('区域设置已保存'); }
+
+// ===== Bells =====
+var _bellBindings = {};
+
+async function loadBells() {
+  var d = await api('/api/bells');
+  if (!d || !d.success) return;
+  var h = '';
+  d.bells.forEach(function(b) {
+    var typeName = BT[b.bell_type] || b.bell_type;
+    if (b.bell_type === 'custom') typeName = '自定义';
+    h += '<tr><td><strong>' + b.name + '</strong></td><td><span class="tag tag-orange">' + typeName + '</span></td><td style="font-size:12px;color:var(--text-tertiary);font-family:var(--mono)">' + b.filename + '</td><td><div class="flex gap-8"><button class="btn btn-primary btn-sm" onclick="playBellFile(\'' + b.filename + '\')">试听</button><button class="btn btn-danger btn-sm" onclick="deleteBell(' + b.id + ')">删除</button></div></td></tr>';
+  });
+  document.getElementById('bellTbody').innerHTML = h || '<tr><td colspan="4" style="text-align:center;color:var(--text-quaternary)">暂无铃声</td></tr>';
+  renderBellBindings(d.bells, d.bindings || {});
+}
+
+async function renderBellBindings(bells, bindings) {
+  var zdata = await api('/api/zones');
+  if (!zdata || !zdata.success) return;
+  var zones = zdata.zones;
+  if (zones.length === 0) { document.getElementById('bindTbody').innerHTML = '<tr><td colspan="20" style="text-align:center;color:var(--text-quaternary)">请先创建区域</td></tr>'; return; }
+  var typeOrder = ['class_start','class_end','prepare','exercise','lunch','school_end','emergency','custom','assembly','eye_exercise','flag_raising','wake_up','bedtime'];
+  var bellTypeNames = {'class_start':'上课','class_end':'下课','prepare':'预备','exercise':'课间操','lunch':'午餐','school_end':'放学','emergency':'紧急','custom':'自定义','assembly':'集会','eye_exercise':'眼保健操','flag_raising':'升旗','wake_up':'起床','bedtime':'就寝'};
+  var existingTypes = {};
+  bells.forEach(function(b) { existingTypes[b.bell_type] = true; });
+  var bellTypes = typeOrder.filter(function(t) { return existingTypes[t]; });
+  var hh = '';
+  bellTypes.forEach(function(t) { hh += '<th style="font-size:12px">' + (bellTypeNames[t] || t) + '</th>'; });
+  document.getElementById('bindHeaderRow').innerHTML = hh;
+  var bellByType = {};
+  bells.forEach(function(b) {
+    var t = b.bell_type;
+    if (!bellByType[t]) bellByType[t] = [];
+    bellByType[t].push(b);
+  });
+  var h = '';
+  zones.forEach(function(z) {
+    h += '<tr><td style="font-weight:600">' + z.name + '</td>';
+    bellTypes.forEach(function(t) {
+      var curBind = bindings[z.id + '_' + t] || 0;
+      h += '<td><select class="bindSel" data-zone="' + z.id + '" data-type="' + t + '" style="width:100%;max-width:160px;font-size:11px;padding:4px">';
+      h += '<option value="0">系统默认</option>';
+      (bellByType[t] || []).forEach(function(b) {
+        h += '<option value="' + b.id + '"' + (curBind === b.id ? ' selected' : '') + '>' + b.name + '</option>';
+      });
+      h += '</select></td>';
+    });
+    h += '</tr>';
+  });
+  document.getElementById('bindTbody').innerHTML = h;
+}
+
+async function saveAllBindings() {
+  var sels = document.querySelectorAll('.bindSel');
+  var promises = [];
+  sels.forEach(function(sel) {
+    var zoneId = sel.getAttribute('data-zone');
+    var bellType = sel.getAttribute('data-type');
+    var bellId = parseInt(sel.value) || 0;
+    promises.push(api('/api/bell_bindings', 'POST', {zone_id: zoneId, bell_type: bellType, bell_id: bellId || null}));
+  });
+  await Promise.all(promises);
+  toast('铃声绑定已保存');
+}
+
+function uploadBell() {
+  toast('上传功能（演示模式），模拟上传成功');
+  setTimeout(function() {
+    toast('上传成功');
+    loadBells();
+  }, 500);
+}
+
+function playBellFile(filename) {
+  toast('正在播放: ' + filename);
+}
+
+async function deleteBell(id) {
+  if (!confirm('确认删除？')) return;
+  await api('/api/bells/' + id, 'DELETE');
+  toast('已删除');
+  loadBells();
+}
+
+// ===== Holidays =====
+async function loadHolidays() {
+  var sel = document.getElementById('holidayYear');
+  if (!sel.innerHTML) {
+    var nowY = new Date().getFullYear();
+    for (var i = nowY - 2; i <= nowY + 2; i++) sel.innerHTML += '<option value="' + i + '"' + (i === nowY ? ' selected' : '') + '>' + i + '年</option>';
+  }
+  var y = sel.value || new Date().getFullYear();
+  var d = await api('/api/holidays?year=' + y);
+  if (!d || !d.success) return;
+  var uh = '';
+  (d.upcoming || []).forEach(function(h) {
+    uh += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-secondary);font-size:13px">';
+    uh += '<span>' + h.date + ' ' + h.weekday + ' <span class="tag ' + (h.type === 'holiday' ? 'tag-red' : 'tag-blue') + '">' + h.name + '</span></span>';
+    uh += '<span style="color:var(--warning);font-weight:600;font-size:12px">' + h.days_away + '天后</span></div>';
+  });
+  document.getElementById('upcomingHolidays').innerHTML = uh || '<div style="padding:16px;color:var(--text-quaternary)">近期无节假日</div>';
+  var hh = '';
+  (d.holidays || []).forEach(function(h) {
+    var typeTag = h.type === 'holiday' ? '<span class="tag tag-red">放假</span>' : '<span class="tag tag-blue">调休</span>';
+    var bellStatus = h.type === 'holiday' ? '<span class="tag tag-red">不打铃</span>' : '<span class="tag tag-green">打铃</span>';
+    var ops = h.custom ? '<button class="btn btn-sm btn-warning" onclick="toggleHolidayBell(' + h.id + ',' + (h.type === 'holiday' ? '0' : '1') + ')">切换为' + (h.type === 'holiday' ? '打铃' : '不打铃') + '</button> <button class="btn btn-danger btn-sm" onclick="deleteCustomHoliday(' + h.id + ')">删除</button>' : '<span style="color:var(--text-quaternary);font-size:12px">官方</span>';
+    hh += '<tr><td style="font-family:var(--mono)">' + h.date + '</td><td>' + DN[new Date(h.date).getDay() ? new Date(h.date).getDay() - 1 : 6] + '</td><td>' + h.name + '</td><td>' + typeTag + '</td><td>' + bellStatus + '</td><td>' + ops + '</td></tr>';
+  });
+  document.getElementById('holidayTbody').innerHTML = hh || '<tr><td colspan="6" style="text-align:center;color:var(--text-quaternary)">暂无节假日，请点击"同步节假日"</td></tr>';
+}
+
+function openHolidayDialog() {
+  document.getElementById('holidayDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('holidayName').value = '';
+  document.querySelector('input[name="holidayBell"][value="no_ring"]').checked = true;
+  document.getElementById('holidayModal').style.display = 'flex';
+}
+function closeHolidayDialog() { document.getElementById('holidayModal').style.display = 'none'; }
+async function saveHoliday() {
+  var date = document.getElementById('holidayDate').value;
+  var name = document.getElementById('holidayName').value;
+  var bell = document.querySelector('input[name="holidayBell"]:checked').value;
+  if (!date) { toast('请选择日期', true); return; }
+  if (!name) { toast('请填写节日名称', true); return; }
+  var isHoliday = bell === 'no_ring';
+  await api('/api/holidays/custom', 'POST', {date: date, name: name, is_holiday: isHoliday});
+  toast(isHoliday ? '已添加放假（不打铃）' : '已添加调休（打铃）');
+  closeHolidayDialog();
+  loadHolidays();
+}
+async function syncHolidays() {
+  toast('正在同步...');
+  var d = await api('/api/holidays/sync', 'POST');
+  if (d && d.success) {
+    toast(d.message);
+    loadHolidays();
+  } else {
+    toast('同步失败', true);
+  }
+}
+async function toggleHolidayBell(hid, newVal) {
+  await api('/api/holidays/custom/' + hid, 'PUT', {is_holiday: !!newVal});
+  toast('操作成功');
+  loadHolidays();
+}
+async function deleteCustomHoliday(id) {
+  if (!confirm('确认删除此节日？')) return;
+  await api('/api/holidays/custom/' + id, 'DELETE');
+  toast('已删除');
+  loadHolidays();
+}
+
+// ===== Schedule Page =====
+async function loadSchedulesPage() {
+  var td = new Date();
+  td.setDate(td.getDate() + 1);
+  document.getElementById('schedDate').value = td.toISOString().slice(0, 10);
+  if (ZONES.length === 0) await initZones();
+  var zSel = document.getElementById('schedZone');
+  zSel.innerHTML = '<option value="">--选择--</option>';
+  ZONES.forEach(function(z) { zSel.innerHTML += '<option value="' + z.id + '">' + z.name + '</option>'; });
+  var d = await api('/api/schedules');
+  if (!d || !d.success) return;
+  var ss = document.getElementById('schedSchedule');
+  ss.innerHTML = '<option value="0">默认课表</option>';
+  d.schedules.forEach(function(s) { ss.innerHTML += '<option value="' + s.id + '">' + s.name + '</option>'; });
+  loadScheduleList();
+}
+
+async function loadScheduleList() {
+  var d = await api('/api/bell_schedules');
+  if (!d || !d.success) return;
+  var rows = (d.schedules || []);
+  var h = '';
+  rows.forEach(function(s) {
+    var zoneName = ZN[s.zone_id] || s.zone_id;
+    var actText = s.action === 'force_ring' ? '<span class="tag tag-green">打铃</span>' : '<span class="tag tag-red">不打铃</span>';
+    var remindText = s.remind_enabled ? '<span class="tag tag-blue">已开启</span>' : '<span class="tag tag-orange">已关闭</span>';
+    h += '<tr><td style="font-family:var(--mono)">' + s.date + '</td><td>' + zoneName + '</td><td>' + actText + '</td><td style="color:var(--text-tertiary)">' + (s.schedule_id || '默认') + '</td><td style="color:var(--text-secondary)">' + (s.reason || '--') + '</td><td>' + remindText + '</td><td><button class="btn btn-danger btn-sm" onclick="deleteScheduleEntry(' + s.id + ')">删除</button></td></tr>';
+  });
+  document.getElementById('schedTbody').innerHTML = h || '<tr><td colspan="7" style="text-align:center;color:var(--text-quaternary);padding:24px">暂无预约，上方添加新预约</td></tr>';
+}
+
+async function addScheduleEntry() {
+  var date = document.getElementById('schedDate').value;
+  var zid = document.getElementById('schedZone').value;
+  var act = document.getElementById('schedAction').value;
+  var sid = parseInt(document.getElementById('schedSchedule').value) || 0;
+  var reason = document.getElementById('schedReason').value;
+  if (!date) { toast('请选择日期', true); return; }
+  if (!zid) { toast('请选择区域', true); return; }
+  var d = await api('/api/bell_schedules', 'POST', {date: date, zone_id: zid, action: act, schedule_id: sid, reason: reason});
+  toast(d && d.success ? d.message : '添加成功', !(d && d.success));
+  if (d && d.success) loadScheduleList();
+}
+
+async function deleteScheduleEntry(id) {
+  if (!confirm('确认删除此预约？')) return;
+  await api('/api/bell_schedules/' + id, 'DELETE');
+  toast('已删除');
+  loadScheduleList();
+}
+
+// Rename to avoid conflict with deleteSchedule in schedules page
+var addSchedule = addScheduleEntry;
+var deleteSchedule = deleteScheduleEntry;
+
+// ===== Settings =====
+async function loadSettings() {
+  var d = await api('/api/settings');
+  if (!d || !d.success) return;
+  var s = d.settings;
+  document.getElementById('holidayApiUrl').value = s.holiday_api_url || 'https://timor.tech/api/holiday/year/{}';
+  document.getElementById('ntpServer').value = s.ntp_server || 'ntp.aliyun.com';
+  document.getElementById('ntpEnabled').checked = s.ntp_enabled !== '0';
+  document.getElementById('ntpLastSync').textContent = s.ntp_last_sync || '从未';
+  document.getElementById('dingtalkWebhook').value = s.dingtalk_webhook || '';
+  document.getElementById('dingtalkEnabled').checked = s.dingtalk_enabled === '1';
+}
+async function saveSettings() {
+  await api('/api/settings', 'POST', {
+    holiday_api_url: document.getElementById('holidayApiUrl').value,
+    ntp_server: document.getElementById('ntpServer').value,
+    ntp_enabled: document.getElementById('ntpEnabled').checked ? '1' : '0',
+    dingtalk_webhook: document.getElementById('dingtalkWebhook').value,
+    dingtalk_enabled: document.getElementById('dingtalkEnabled').checked ? '1' : '0',
+    password: document.getElementById('passwordInput').value
+  });
+  toast('已保存');
+  loadDashboard();
+}
+async function ntpSync() {
+  var r = await api('/api/ntp/sync', 'POST');
+  toast(r && r.success ? '校时成功，偏差' + r.offset + '秒' : '校时成功');
+  loadSettings();
+  loadDashboard();
+}
+async function testDingtalk() {
+  await api('/api/dingtalk/test', 'POST');
+  toast('测试消息已发送');
+}
+
+// ===== Logs =====
+async function loadLogs() {
+  var cat = document.getElementById('logCat').value;
+  var d = await api('/api/logs?per_page=50' + (cat ? '&category=' + cat : ''));
+  if (!d || !d.success) return;
+  var h = '';
+  d.logs.forEach(function(l) {
+    h += '<tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">' + l.timestamp.slice(0, 19) + '</td><td><span class="tag ' + (l.level === 'ERROR' ? 'tag-red' : 'tag-blue') + '">' + l.level + '</span></td><td><span class="tag tag-blue">' + l.category + '</span></td><td>' + l.message + '</td></tr>';
+  });
+  document.getElementById('logTbody').innerHTML = h || '<tr><td colspan="4" style="text-align:center;color:var(--text-quaternary)">暂无日志</td></tr>';
+}
+
+// ===== Init =====
+initZones().then(function() { loadBellsForEditor(); }).then(function() { loadDashboard(); });
+setInterval(function() { initZones().then(function() { loadDashboard(); }); }, 30000);
+</script>
+</body>
+</html>

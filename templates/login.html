@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 - 钢城智慧铃声系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei",sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.login-box{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:40px 36px;width:90%;max-width:360px;text-align:center}
+.login-box h1{font-size:1.5em;color:#f59e0b;margin-bottom:6px}
+.login-box .sub{font-size:.85em;color:#94a3b8;margin-bottom:24px}
+.login-box input{width:100%;padding:12px 14px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:1em;margin-bottom:16px}
+.login-box input:focus{outline:none;border-color:#3b82f6}
+.login-box button{width:100%;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:1em;cursor:pointer;font-weight:bold}
+.login-box button:hover{background:#2563eb}
+.login-box .error{color:#ef4444;font-size:.85em;margin-top:10px;display:none}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <h1>🔔 钢城智慧铃声系统</h1>
+  <div class="sub">请输入密码继续</div>
+  <input type="password" id="pwd" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+  <button onclick="doLogin()">进入系统</button>
+  <div class="error" id="errMsg"></div>
+</div>
+<script>
+async function doLogin(){
+  const pwd=document.getElementById('pwd').value;
+  const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
+  const d=await r.json();
+  if(d.success){
+    if(d.message!=='未设置密码')document.cookie='auth_token='+d.message+';max-age='+(86400*30);
+    window.location.href='/';
+  }else{
+    const e=document.getElementById('errMsg');
+    e.textContent=d.message||'密码错误';e.style.display='block';
+  }
+}
+</script>
+</body>
+</html>
