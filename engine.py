@@ -217,10 +217,21 @@ class AudioPlayer:
         return device_id if device_id is not None else "__default__"
 
     def _get_or_create_stream(self, device_id):
-        """懒创建: 每设备一个 OutputStream"""
+        """懒创建: 每设备一个 OutputStream (含健康检测)"""
         key = self._stream_key(device_id)
         if key in self._streams and self._streams[key] is not None:
-            return self._streams[key]
+            st = self._streams[key]
+            try:
+                if st.active:
+                    return st
+                logger.warning(f"音频流 [{key}] 已失效, 重建中")
+            except Exception:
+                logger.warning(f"音频流 [{key}] 检查异常, 重建中")
+            try:
+                st.close()
+            except Exception:
+                pass
+            self._streams[key] = None
 
         import sounddevice as sd
         import numpy as np
@@ -440,40 +451,28 @@ class AudioPlayer:
         return self.global_paused
 
     def get_audio_devices(self):
-        """枚举音频设备：只显示有用的设备，带友好名称和物理输出标注"""
-        # 用户友好的设备映射：真实设备名 → 显示名称
-        DEVICE_LABELS = {
-            "Voicemeeter Input (VB-Audio Voicemeeter VAIO)": "音箱输出 (Voicemeeter 虚拟输入)",
-            "Voicemeeter AUX Input (VB-Audio Voicemeeter VAIO)": "耳机输出 (Voicemeeter 虚拟输入)",
-            "Speakers (Realtek HD Audio output)": "音箱 (Realtek 直连)",
-            "Headphones (Realtek HD Audio 2nd output)": "耳机 (Realtek 直连)",
+        """枚举音频设备：显示可用的独立输出设备"""
+        # 设备映射：真实设备名 → 显示名称 + 工作模式说明
+        # 注：VoiceMeeter 虚拟输入在本机只能输出到同一音箱，不提供额外独立输出
+        KEEP = {
+            "Speakers (Realtek HD Audio output)": "音箱 (WDM-KS 直连)",
+            "Headphones (Realtek HD Audio 2nd output)": "耳机 (WDM-KS 直连)",
         }
-        devices = [{"id": "default", "name": "默认设备 (系统当前默认输出)"}]
+        devices = [{"id": "default", "name": "默认输出: 音箱 (WASAPI 共享模式)"}]
         try:
             import sounddevice as sd
             hostapis = sd.query_hostapis()
             all_devs = sd.query_devices()
             seen = set()
-            # 先搜 WASAPI （VoiceMeeter 虚拟输入）
-            for ha in hostapis:
-                if 'WASAPI' in ha['name']:
-                    for did in ha['devices']:
-                        d = all_devs[did]
-                        if d['max_output_channels'] > 0:
-                            name = d['name'].strip()
-                            if name in DEVICE_LABELS and name not in seen:
-                                seen.add(name)
-                                devices.append({"id": f"name:{name}", "name": DEVICE_LABELS[name]})
-            # 再搜 WDM-KS （物理输出）
             for ha in hostapis:
                 if 'WDM-KS' in ha['name']:
                     for did in ha['devices']:
                         d = all_devs[did]
                         if d['max_output_channels'] > 0:
                             name = d['name'].strip()
-                            if name in DEVICE_LABELS and name not in seen:
+                            if name in KEEP and name not in seen:
                                 seen.add(name)
-                                devices.append({"id": f"name:{name}", "name": DEVICE_LABELS[name]})
+                                devices.append({"id": f"name:{name}", "name": KEEP[name]})
         except Exception as e:
             logger.error(f"设备枚举失败: {e}")
         return devices

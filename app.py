@@ -12,7 +12,7 @@ from datetime import datetime, date, timedelta
 from pathlib import Path
 from io import BytesIO
 
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, make_response
 from models import get_db, init_db, add_log, get_setting, set_setting
 from engine import engine
 
@@ -61,7 +61,11 @@ def auth_middleware():
 # ====== 页面路由 ======
 @app.route("/")
 def index():
-    return render_template("index.html")
+    resp = make_response(render_template("index.html"))
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 # ====== API: 认证 ======
@@ -147,6 +151,7 @@ def api_status():
 # ====== API: 课表管理 ======
 @app.route("/api/schedules", methods=["GET"])
 def api_schedules_list():
+    zone_filter = request.args.get("zone_id")
     conn = get_db()
     schedules = conn.execute("SELECT * FROM schedules ORDER BY id").fetchall()
     result = []
@@ -162,6 +167,9 @@ def api_schedules_list():
             if zid not in zone_tasks:
                 zone_tasks[zid] = []
             zone_tasks[zid].append(dict(t))
+        # 如果指定了区域过滤，只返回包含该区域任务的课表
+        if zone_filter and zone_filter not in zone_tasks:
+            continue
         result.append({
             "id": s["id"],
             "name": s["name"],
@@ -1077,6 +1085,10 @@ def api_import():
 
 
 # ====== API: 健康检查 ======
+@app.route("/favicon.ico")
+def favicon():
+    return "", 204
+
 @app.route("/api/health")
 def api_health():
     return jsonify({"status": "ok", "time": datetime.now().isoformat()})

@@ -179,6 +179,7 @@ tbody tr:hover{background:var(--primary-light)}
     <div class="nav-group">
       <div class="nav-group-label">管理</div>
       <div class="nav-item" data-page="schedules"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></span><span>课表管理</span></div>
+      <div class="nav-item" data-page="schedule_v2"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></span><span>排课管理</span></div>
       <div class="nav-item" data-page="zones"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M2 20h20M5 20V8l7-5 7 5v12"/><path d="M9 20v-5h6v5"/></svg></span><span>区域控制</span></div>
       <div class="nav-item" data-page="bells"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span>铃声管理</span></div>
     </div>
@@ -268,7 +269,43 @@ tbody tr:hover{background:var(--primary-light)}
             <button class="btn btn-ghost btn-sm" onclick="window.open('/api/template','_blank')">下载模板</button>
           </div>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>区域</th><th>时间</th><th>铃声类型</th><th>名称</th><th>适用日期</th><th>操作</th></tr></thead><tbody id="taskTbody"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>区域</th><th>时间</th><th>铃声名称</th><th>名称</th><th>适用日期</th><th>操作</th></tr></thead><tbody id="taskTbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ===== 排课管理 V2（区域优先） ===== -->
+    <div class="page" id="page-schedule_v2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">区域选择</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px">
+          <div class="form-group" style="min-width:180px">
+            <label class="form-label">选择区域</label>
+            <select id="zoneSelectV2" style="width:100%" onchange="loadSchedulesV2()"><option value="">-- 选择区域 --</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">课表方案</div>
+          <div class="flex gap-8 items-center">
+            <select id="schedSelectV2" style="width:200px" onchange="loadTasksV2()"><option value="">-- 选择课表 --</option></select>
+            <button class="btn btn-primary" onclick="createScheduleV2()">新建</button>
+            <button class="btn btn-success" onclick="activateScheduleV2()">设为默认</button>
+            <button class="btn btn-danger" onclick="deleteScheduleV2()">删除</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">打铃任务</div>
+          <div class="flex gap-8 items-center">
+            <button class="btn btn-primary" onclick="addTaskV2()">添加任务</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>区域</th><th>时间</th><th>铃声名称</th><th>任务名称</th><th>适用日期</th><th>操作</th></tr></thead><tbody id="taskTbodyV2"></tbody></table></div>
+      <div id="debugV2" style="padding:8px;font-size:12px;color:var(--text-quaternary);display:none"></div>
       </div>
     </div>
 
@@ -540,7 +577,7 @@ tbody tr:hover{background:var(--primary-light)}
 </div>
 
 <script>
-var PT={dashboard:'系统总览',schedules:'课表管理',zones:'区域控制',bells:'铃声管理',holidays:'节假日',schedule:'预约控制',settings:'系统设置',logs:'运行日志'};
+var PT={dashboard:'系统总览',schedules:'课表管理',schedule_v2:'排课管理',zones:'区域控制',bells:'铃声管理',holidays:'节假日',schedule:'预约控制',settings:'系统设置',logs:'运行日志'};
 var BT={class_start:'上课铃',class_end:'下课铃',prepare:'预备铃',exercise:'课间操',lunch:'午餐铃',school_end:'放学铃',emergency:'紧急铃',custom:'自定义'};
 var ZN={}; // 动态从API获取
 var ZONES=[]; // 缓存区域列表
@@ -591,6 +628,7 @@ var pageLoaded={};
 function loadPage(pg){
   if(pg==='dashboard')loadDashboard();
   else if(pg==='schedules')loadSchedules();
+  else if(pg==='schedule_v2')loadScheduleV2();
   else if(pg==='zones')loadZones();
   else if(pg==='bells')loadBells();
   else if(pg==='holidays')loadHolidays();
@@ -721,7 +759,7 @@ async function loadTasks(){
   tasks.sort(function(a,b){return a.time>b.time?1:-1});
   var h='';tasks.forEach(function(t){
     var zoneName=ZN[t.zone_id]||'区域'+t.zone_id;
-    h+='<tr><td><span class="tag tag-blue">'+zoneName+'</span></td><td><strong style="font-family:var(--mono)">'+t.time+'</strong></td><td><span class="tag tag-orange">'+(BT[t.bell_type]||t.bell_type)+'</span></td><td>'+t.task_name+'</td><td style="color:var(--text-tertiary);font-size:12px">'+(t.days?t.days.split(',').map(function(d){return DN[parseInt(d)-1]}).join('、'):'--')+'</td><td><button class="btn btn-primary btn-sm" onclick="editTask('+t.id+')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteTask('+t.id+')">删除</button></td></tr>';
+    h+='<tr><td><span class="tag tag-blue">'+zoneName+'</span></td><td><strong style="font-family:var(--mono)">'+t.time+'</strong></td><td><span class="tag tag-orange">'+(bellNameMap[t.bell_id]||BT[t.bell_type]||t.bell_type)+'</span></td><td>'+t.task_name+'</td><td style="color:var(--text-tertiary);font-size:12px">'+(t.days?t.days.split(',').map(function(d){return DN[parseInt(d)-1]}).join('、'):'--')+'</td><td><button class="btn btn-primary btn-sm" onclick="editTask('+t.id+')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteTask('+t.id+')">删除</button></td></tr>';
   });
   document.getElementById('taskTbody').innerHTML=h||'<tr><td colspan="6" style="text-align:center;color:var(--text-quaternary)">暂无任务</td></tr>';
 }
@@ -729,12 +767,69 @@ async function createSchedule(){var n=prompt('课表名称：');if(!n)return;var
 async function activateSchedule(){var sid=document.getElementById('schedSelect').value;var d=await api('/api/schedules/'+sid,'PUT',{activate:true});toast(d&&d.success?'已设为默认课表':'失败');loadSchedules()}
 async function deleteSchedule(){var sid=document.getElementById('schedSelect').value;if(!confirm('确认删除？'))return;var d=await api('/api/schedules/'+sid,'DELETE');toast(d&&d.success?'已删除':'失败');loadSchedules()}
 
+// ===== 排课管理 V2 =====
+async function loadScheduleV2(){
+  var zSel=document.getElementById('zoneSelectV2');
+  zSel.innerHTML='<option value="">-- 选择区域 --</option>';
+  ZONES.forEach(function(z){zSel.innerHTML+='<option value="'+z.id+'">'+z.name+'</option>'});
+  if(zSel.value)loadSchedulesV2();
+}
+async function loadSchedulesV2(){
+  var zid=document.getElementById('zoneSelectV2').value;
+  if(!zid){document.getElementById('schedSelectV2').innerHTML='<option value="">-- 选择课表 --</option>';document.getElementById('taskTbodyV2').innerHTML='';return}
+  var d=await api('/api/schedules?zone_id='+zid);if(!d||!d.success)return;
+  var sel=document.getElementById('schedSelectV2');sel.innerHTML='<option value="">-- 选择课表 --</option>';
+  d.schedules.forEach(function(s){
+    var cnt=(s.zone_tasks[zid]||[]).length;
+    sel.innerHTML+='<option value="'+s.id+'"'+(s.is_active?' selected':'')+'>'+s.name+(s.is_active?' [默认]':'')+' ('+cnt+'条)</option>';
+  });
+  loadTasksV2();
+}
+async function loadTasksV2(){
+  try {
+  var zid=document.getElementById('zoneSelectV2').value;
+  var sid=document.getElementById('schedSelectV2').value;
+  if(!zid||!sid){document.getElementById('taskTbodyV2').innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-quaternary)">请先选择区域和课表</td></tr>';document.getElementById('debugV2').style.display='none';return}
+  var d=await api('/api/schedules');if(!d||!d.success)return;
+  var sched=d.schedules.find(function(s){return s.id==sid});if(!sched)return;
+  var tasks=sched.zone_tasks[zid]||[];
+  tasks.sort(function(a,b){return a.time>b.time?1:-1});
+  document.getElementById('debugV2').style.display='block';
+  document.getElementById('debugV2').textContent='区域='+zid+' 课表='+sid+' 任务数='+tasks.length;
+  var h='';tasks.forEach(function(t){
+    var zoneName=ZN[t.zone_id]||'区域'+t.zone_id;
+    h+='<tr><td><span class="tag tag-blue">'+zoneName+'</span></td><td><strong style="font-family:var(--mono)">'+t.time+'</strong></td><td><span class="tag tag-orange">'+(bellNameMap[t.bell_id]||BT[t.bell_type]||t.bell_type)+'</span></td><td>'+t.task_name+'</td><td style="color:var(--text-tertiary);font-size:12px">'+(t.days?t.days.split(',').map(function(d){return DN[parseInt(d)-1]}).join('、'):'--')+'</td><td><button class="btn btn-primary btn-sm" onclick="editTask('+t.id+')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteTaskV2('+t.id+')">删除</button></td></tr>';
+  });
+  document.getElementById('taskTbodyV2').innerHTML=h||'<tr><td colspan="6" style="text-align:center;color:var(--text-quaternary)">暂无任务</td></tr>';
+  }catch(e){document.getElementById('debugV2').style.display='block';document.getElementById('debugV2').textContent='ERROR: '+e.message;console.error(e)}
+}
+function addTaskV2(){
+  var zid=document.getElementById('zoneSelectV2').value;if(!zid){toast('请先选择区域',true);return}
+  openTaskModal(null);
+  if(document.getElementById('taskZone'))document.getElementById('taskZone').value=zid;
+}
+async function deleteTaskV2(tid){
+  if(!confirm('确认删除此任务？'))return;
+  var d=await api('/api/tasks/'+tid,'DELETE');
+  toast(d&&d.success?'已删除':'删除失败',!(d&&d.success));
+  loadTasksV2();
+}
+async function createScheduleV2(){var n=prompt('课表名称：');if(!n)return;var d=await api('/api/schedules','POST',{name:n});toast(d&&d.success?'创建成功':'失败',!(d&&d.success));loadSchedulesV2()}
+async function activateScheduleV2(){var sid=document.getElementById('schedSelectV2').value;if(!sid)return;var d=await api('/api/schedules/'+sid,'PUT',{activate:true});toast(d&&d.success?'已设为默认课表':'失败');loadSchedulesV2()}
+async function deleteScheduleV2(){var sid=document.getElementById('schedSelectV2').value;if(!sid){toast('请先选择课表',true);return}if(!confirm('确认删除？'))return;var d=await api('/api/schedules/'+sid,'DELETE');toast(d&&d.success?'已删除':'失败');loadSchedulesV2()}
+
 // 任务编辑弹窗
 var BELLS=[]; // 缓存铃声列表
+var bellNameMap={}; // bell_id -> name 快速查找表
+
+function updateBellNameMap(){
+  bellNameMap={};
+  BELLS.forEach(function(b){if(b&&b.id)bellNameMap[b.id]=b.name});
+}
 
 function loadBellsForEditor(){
   return api('/api/bells').then(function(d){
-    if(d&&d.success){BELLS=d.bells}
+    if(d&&d.success){BELLS=d.bells;updateBellNameMap()}
   });
 }
 
@@ -820,9 +915,9 @@ async function saveTask(){
   var bell=BELLS.find(function(b){return b.id===bellId});
   var bellType=bell?bell.bell_type:'custom';
   
-  var sid=document.getElementById('schedSelect').value;
-  var data={
-    schedule_id:sid,
+  var schedSel2=document.getElementById('schedSelectV2');
+  var sid=schedSel2?schedSel2.value:'';if(!sid)sid=document.getElementById('schedSelect').value;
+  var data={schedule_id:sid,
     zone_id:zoneId,
     time:time,
     bell_type:bellType,
@@ -855,7 +950,8 @@ async function saveTask(){
   }
   
   closeTaskModal();
-  loadTasks();
+  var v2active=document.getElementById('page-schedule_v2').classList.contains('active');
+  if(v2active)loadTasksV2();else loadTasks();
 }
 function addTask(){openTaskModal(null)}
 function editTask(tid){openTaskModal(tid)}
@@ -864,7 +960,8 @@ async function deleteTask(tid){
   var d=await api('/api/tasks/'+tid,'DELETE');
   if(!d||!d.success){toast('删除失败: '+(d?d.error:'网络错误'),true);return}
   toast('已删除');
-  loadTasks();
+  var v2active=document.getElementById('page-schedule_v2').classList.contains('active');
+  if(v2active)loadTasksV2();else loadTasks();
 }
 
 // Excel导出
@@ -1074,7 +1171,7 @@ function uploadBell(){
     fetch('/api/bells/upload',{method:'POST',body:formData})
       .then(function(r){return r.json()})
       .then(function(d){
-        if(d.success){toast('上传成功');loadBells()}else{toast('上传失败: '+(d.error||''),true)}
+        if(d.success){toast('上传成功');loadBells();loadBellsForEditor()}else{toast('上传失败: '+(d.error||''),true)}
       })
       .catch(function(e){toast('上传失败',true)});
   };
@@ -1085,7 +1182,7 @@ function playBellFile(filename){
   audio.play().catch(function(e){toast('播放失败: '+e.message,true)});
   toast('正在播放: '+filename);
 }
-async function deleteBell(id){if(!confirm('确认删除？'))return;await api('/api/bells/'+id,'DELETE');loadBells()}
+async function deleteBell(id){if(!confirm('确认删除？'))return;await api('/api/bells/'+id,'DELETE');loadBells();loadBellsForEditor()}
 
 // ===== 节假日 =====
 async function loadHolidays(){
