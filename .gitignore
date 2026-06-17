@@ -10,3 +10,5 @@ backups/
 static/sounds/*.mp3
 .DS_Store
 thumbs.db
+VoicemeeterInstall/
+VoicemeeterSetup.zip
