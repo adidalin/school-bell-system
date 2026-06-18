@@ -1183,3 +1183,9 @@ def api_bell_schedule_delete(sid):
     conn.close()
     add_log("INFO", "schedule", f"删除预约控制 ID={sid}")
     return jsonify({"success": True})
+
+
+@app.errorhandler(500)
+def handle_500(e):
+    logger.error(f"500 Internal Server Error: {e}", exc_info=True)
+    return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
