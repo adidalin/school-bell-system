@@ -406,131 +406,166 @@ bell_check_task → SELECT * FROM task_overrides WHERE task_id=? AND ? BETWEEN s
 
 | 项目 | Stars | 用途 | 适配度 |
 |------|-------|------|--------|
-| [nateshmbhat/pyttsx3](https://github.com/nateshmbhat/pyttsx3) | 2.5k | 离线 TTS，Windows SAPI5 | ⭐⭐⭐⭐⭐ |
+| [rany2/edge-tts](https://github.com/rany2/edge-tts) | 11.3k | 调用 Edge 在线 TTS 服务，高质量中文神经语音 | ⭐⭐⭐⭐⭐（首选） |
 | [bastibe/python-soundfile](https://github.com/bastibe/python-soundfile) | 1.2k | 音频读写，numpy 数组 | ⭐⭐⭐⭐⭐（已安装） |
+| [nateshmbhat/pyttsx3](https://github.com/nateshmbhat/pyttsx3) | 2.5k | 离线 TTS，Windows SAPI5 | ⭐⭐⭐⭐（离线降级方案） |
 | [naomiaro/waveform-playlist](https://github.com/naomiaro/waveform-playlist) | 1.6k | 前端波形编辑器 | ⭐⭐（太重，React 依赖） |
 | [malmr/web-audio-visualizer](https://github.com/malmr/web-audio-visualizer) | 1 | Flask + Canvas 波形显示 | ⭐⭐⭐⭐（轻量可参考） |
-| [JNPCreates/TrimAudio](https://github.com/JNPCreates/TrimAudio) | 0 | 波形裁剪 GUI | ⭐⭐⭐（tkinter，非 web） |
-| [RhythrosaLabs/streamlit-audio-editor](https://github.com/RhythrosaLabs/streamlit-audio-editor) | 1 | 浏览器端音频编辑器 | ⭐⭐⭐（思路可参考） |
 
-### 专家讨论
+### 技术方案选择：edge-tts 详解
+
+**为什么选 edge-tts 而不是微软 SAPI5 或 pyttsx3：**
+
+| 对比项 | edge-tts（Edge 在线 TTS） | pyttsx3（Windows SAPI5） |
+|--------|--------------------------|-------------------------|
+| **GitHub Stars** | 11.3k | 2.5k |
+| **中文语音质量** | ⭐⭐⭐⭐⭐ 神经网络语音，自然流畅 | ⭐⭐⭐ 较机械，微软旧引擎 |
+| **中文可选语音** | 10+（Xiaoxiao/Yunxi/Yunyang/Xiaohan...） | 1-2（取决于 Windows 版本） |
+| **语音风格** | 支持（general/cheerful/sad/call等） | 不支持 |
+| **语速/音量/音调** | ✅ 全部支持 | ✅ 全部支持 |
+| **导出格式** | MP3 / raw PCM | WAV |
+| **需要网络** | ✅ 是（调用微软云服务） | ❌ 否（完全离线） |
+| **需要 Edge 浏览器** | ❌ 不需要 | — |
+| **需要 API Key** | ❌ 完全免费 | — |
+| **跨平台** | ✅ Linux/macOS/Windows | ✅ Linux/macOS/Windows |
+
+**核心关注点——断网怎么办：**
+
+> edge-tts 需要互联网连接才能生成语音。但铃声编辑的使用场景是"管理员在电脑前操作"，每次只生成一条短语音（5-30 秒），网络中断的可能性很低。即使偶尔断网，可以提示"当前无网络，TTS 功能不可用"。
+>
+> **更稳妥的方案：双引擎策略**
+> ```
+> def generate_tts(text, voice="zh-CN-XiaoxiaoNeural"):
+>     try:
+>         # 首选 edge-tts（高质量）
+>         return edge_tts_generate(text, voice)
+>     except (ConnectionError, TimeoutError):
+>         # 降级到 pyttsx3（离线）
+>         return pyttsx3_generate(text, "Chinese")
+> ```
+> 
+> 一旦 TTS 生成完毕保存为 WAV 文件，之后播放完全不依赖网络。**网络只影响"创建铃声"这一刻，不影响"响铃"这一刻。**
+
+#### 音频格式问题的解决方案
+
+edge-tts 默认输出 MP3，而我们的系统播放 WAV。但 edge-tts 支持 `raw-24khz-16bit-mono-pcm` 输出格式——以原始 PCM 流替代 MP3，在 Python 端加上 WAV 文件头即可转成标准 WAV：
+
+```
+edge-tts → 设置 output_format="raw-24khz-16bit-mono-pcm"
+         → 收到原始 PCM bytes（16-bit little-endian，24kHz，单声道）
+         → Python 用 wave 模块加上 RIFF 头
+         → 保存为 .wav 文件（零 ffmpeg，零额外依赖）
+```
+
+Python 代码示意（3 行）：
+```python
+import wave, struct
+with wave.open("output.wav", "wb") as w:
+    w.setnchannels(1); w.setsampwidth(2); w.setframerate(24000)
+    w.writeframes(pcm_bytes)
+```
+
+#### 对现有系统的兼容性分析
+
+**3 个关键保证：**
+
+> 1. ❌ **不修改现有打铃逻辑。** 铃声编辑是独立功能，新生成的铃声只是 `bells` 表多一条记录 + `static/sounds/` 多一个 WAV 文件。打铃路径 `task → bell_type → bell.filepath` 不变。
+>
+> 2. ❌ **不引入新运行时依赖。** `edge-tts` 只在呼叫 `/api/bell-editor/tts` 时才被加载。打铃线程和调度线程完全不受影响。`pip install edge-tts` 后导入 `edge_tts` 本身不阻塞，不抢占 GIL。
+>
+> 3. ❌ **不修改现有数据库表。** 铃声编辑只操作 `bells` 表（INSERT）。现有 `tasks`, `schedules`, `zones`, `task_overrides` 全部不动。
+
+**专家讨论：**
 
 **陈工（架构）**：
 
-> 这个功能完全可行，技术栈和现有系统高度兼容。我看一下依赖链：
-
-```
-现有系统已有：
-  ├── soundfile     (音频读写，支持 WAV/FLAC/OGG)
-  ├── numpy         (数组运算，裁剪/混音的基础)
-  └── Flask         (后端 API)
-
-新增一个依赖：
-  └── pyttsx3       (TT pip install pyttsx3)
-                      ↓ 调用 Windows SAPI5
-                      ↓ 完全离线，支持中文
-                      ↓ save_to_file() 直接生成 WAV
-```
-
-**零 ffmpeg 的音频编辑方案（全部用 numpy + soundfile）：**
-
-| 操作 | 实现方式 | 代码行数 |
-|------|---------|---------|
-| 导入已有铃声 | `sf.read(path)` → numpy array | 1 |
-| 裁剪（截取片段） | `data[start:end]` | 1 |
-| TTS 生成语音段 | `pyttsx3.save_to_file()` → `sf.read()` | 3 |
-| 混合（声音叠加） | `np.add(data1, data2) / clip()` | 3 |
-| 拼接（先后播放） | `np.concatenate([data1, data2])` | 1 |
-| 音量调整 | `data * factor` | 1 |
-| 淡入淡出 | `data * fade_curve` | 3 |
-| 导出新铃声文件 | `sf.write(path, data, sr)` → 写入 `static/sounds/` | 1 |
-
-**关键细节：**
-
-> 1. **WAV 是唯一格式**。soundfile 在 Windows 上自带 libsndfile，支持 WAV/FLAC/OGG。TTS 输出 WAV，裁剪保留 WAV，最终存 WAV。系统已有的铃声也是 WAV，完美兼容。
+> edge-tts 的架构决定了它和我们的系统是一个松耦合关系——它只在"创建铃声"时才被调用，打完电话就挂断。两个独立进程的感觉，不会互相影响。
 >
-> 2. **采样率统一**。系统现有铃声采样率 22050，TTS 可能输出 16000 或 22050。混音前必须重采样到一致。Python 实现：`scipy.signal.resample` 可以，但不一定装了；更简单的方法：用 `np.interp` 或直接 `sf.read(..., samplerate=22050)` 让 soundfile 自动处理。
+> 唯一要注意的是：
 >
-> 3. **中文 TTS**。Windows 10/11 内置"Microsoft Huihui"简体中文语音。pyttsx3 可以通过 `engine.setProperty('voice', voice.id)` 选中。效果清晰自然，适合铃声提示语（如"考试时间到，请考生停止答题"）。
+> 1. **异步调用**。edge-tts 使用 `asyncio`（aiohttp WebSocket），而 Flask 是同步的。需要 `asyncio.run()` 包裹，或者 `loop.run_until_complete()`。Flask 路由里面直接 `asyncio.run(communicate(...))` 即可——每次调用创建一个新 event loop，用完就丢，不会和 APScheduler 的 event loop 冲突（APScheduler 默认不使用 asyncio）。
 >
-> 4. **编辑后生成的是新的铃声文件**。不修改原文件。流程：
-> ```
-> 用户上传铃声.wav ↘
->                   → numpy 处理 → static/sounds/edited_xxx.wav
-> 用户输入文字   → TTS → WAV ↗                ↓
->                                         bells 表新增一条记录 ← 用户命名
-> ```
-
-**数据流：**
-
-```
-┌─────────────┐    ┌──────────────────┐    ┌──────────────┐
-│ 前端页面     │    │ Flask API         │    │ 后端处理      │
-│             │    │                  │    │              │
-│ ① 选择已有铃 │───→│ POST /api/bell-  │───→│ sf.read()    │
-│   声文件导入  │    │   editor/import  │    │ → numpy arr  │
-│             │    │                  │    │              │
-│ ② 拖拽裁剪   │───→│ POST /api/bell-  │───→│ arr[start:end│
-│   滑块选区间  │    │   editor/trim    │    │ ]            │
-│             │    │                  │    │              │
-│ ③ 输入TTS文字│───→│ POST /api/bell-  │───→│ pyttsx3 →   │
-│   + 选语音   │    │   editor/tts     │    │ sf.read()    │
-│             │    │                  │    │              │
-│ ④ 混合/拼接  │───→│ POST /api/bell-  │───→│ np.add /     │
-│   预览/导出  │    │   editor/mix     │    │ np.concat    │
-│             │    │                  │    │              │
-│ ⑤ 保存为铃声 │───→│ POST /api/bell-  │───→│ sf.write →   │
-│   + 命名     │    │   editor/save    │    │ bells 表新增  │
-└─────────────┘    └──────────────────┘    └──────────────┘
-```
-
-**前端实现思路：**
-
-由于本项目没有前端构建工具（纯 HTML + JS + CSS），波形显示有两种方案：
-
-| 方案 | 做法 | 优点 | 缺点 |
-|------|------|------|------|
-| **A. 后端渲染波形图** | Flask 用 matplotlib 生成波形 PNG，前端 img 显示 | 实现最快，不依赖前端库 | 不能交互拖拽裁剪 |
-| **B. 前端 Canvas 绘制** | API 返回波形峰值数据（~1000个float），前端 Canvas draw | 可以交互拖拽裁剪 | 稍多一些 JS 代码 |
-
-推荐**方案 B**：后端返回 `GET /api/bell-editor/waveform?file=xxx` → `{peaks: [...], duration: 12.5}`，前端用 Canvas 画波形 + 拖拽滑块设置起止点。代码量约 80 行 JS。
+> 2. **超时处理**。网络请求可能超时。设置 15 秒超时时间，超时后回到降级策略或返回错误信息给前端。
+>
+> 3. **临时文件清理**。TTS 生成的临时文件要及时清理。建议全程在内存中处理（PCM bytes → numpy array → 混音 → 写出最终文件），不写中间文件。
+>
+> 4. **edge-tts 是否会被微软封禁？** 这是一个社区维护的项目，通过模拟 Edge 浏览器的 WebSocket 握手来访问公开服务。微软没有官方禁止，但也没有保证永远可用。这个项目已经存在 3 年+，Star 11k+，社区活跃。如果真的被封禁，我们可以切到 pyttsx3，或者当时再评估其他方案。
 
 **张老师（产品）**：
 
-> 这个功能的用户场景是什么？
+> 用户要的是两件事：
 >
-> 场景 1：教导主任想播一段"考试时间到，请考生停止答题"的语音提示，但现有的铃声库没有。她不需要找外部工具合成，直接在系统里输入文字 → TTS 生成 → 保存为铃声 → 设置为某个任务的铃声。**全在一个系统里完成**。
+> 1. 铃声编辑功能"能不能做"——✅ 完全可以
+> 2. 稳定的 TTS 语音——⏳ 需要用真实环境测试
 >
-> 场景 2：现有的上课铃声太短，她想在前面加一段"同学们好"，但不想重新找音频文件。导入原铃声 → 裁剪保留后段 → TTS 生成"同学们好" → 拼接在一起 → 保存为新铃声。
+> 我的建议是这样：
 >
-> 场景 3：她有一段现成的 WAV 音频，只想截取中间 10 秒作为铃声。导入 → 拖拽选区 → 导出为新铃声。
+> - 先用 edge-tts 开发完成
+> - 部署后在现场测试 TTS 效果（需要网络）
+> - 如果网络不稳定，后台加装 pyttsx3 作为 fallback
 >
-> 总结：**这个功能解决的是"不想离开本系统去外部工具编辑音频"的问题**。对学校用户来说，少一个工具切换就少一层学习成本。
+> 学校的网络一般不会太差，至少办公室的电脑肯定是联网的。管理员在电脑前操作铃声编辑，网络十拿九稳。
+>
+> 流程设计上，让用户操作的前两步（导入音频、裁剪）完全离线可用，只有 TTS 这一步需要网络。这样即使断网，用户也能完成其他编辑工作。
 
 **王工（运维）**：
 
-> 关注一下文件管理：
+> 我说一下运维角度的风险评估：
 >
-> 1. 生成的铃声文件统一放在 `static/sounds/edited/` 目录，和原始铃声分开
-> 2. 文件名格式：`edited_{timestamp}_{name}.wav`
-> 3. 当铃声被删除时，对应的 WAV 文件也一并清理（或者保留但标记为未引用）
-> 4. SQLite 文件大小不是问题，几条 WAV 铃声撑不起多少空间
-> 5. pyttsx3 生成的中文语音质量取决于 Windows 系统安装的语音包。Windows 10 自带的"Microsoft Huihui"效果尚可。如果需要更自然的中文语音，可以后期切换到 edge-tts（需要网络）
+> **风险矩阵：**
+>
+> | 风险 | 概率 | 影响 | 应对 |
+> |------|------|------|------|
+> | 编辑时断网 | 低 | TTS 失败，不能生成语音 | fallback 到 pyttsx3 + 前端提示"网络不可用，使用离线语音" |
+> | edge-tts 被微软封禁 | 极低 | 整个 TTS 功能不可用 | 切到 pyttsx3，或等社区修复 |
+> | 生成的铃声文件过多 | 低 | 硬盘空间占用 | 限制最多生成 200 个，超限提示清理 |
+> | 用户把乱七八糟的音频导入 | 中 | 音质差、尺度过大 | 前端限制文件大小 10MB、格式 WAV/MP3 |
+>
+> **关于离线降级方案 pyttsx3：**
+>
+> `pip install pyttsx3` 本身不含任何安全隐患。它只是调用 Windows 系统的 SAPI5 COM 接口，和系统自带的语音功能一样可靠。即使 asyncio 失败，它也不会影响 Flask 的主线程——降级的 if 分支在 `except` 块里，互斥。
+>
+> **结论：零风险，不会引入新 bug。**
 
-### 可行性结论
+### 数据流（更新版）
+
+```
+┌─────────────┐    ┌──────────────────┐    ┌─────────────────────────┐
+│ 前端页面     │    │ Flask API         │    │ 后端处理                │
+│             │    │                  │    │                         │
+│ ① 选择已有铃 │───→│ POST /api/bell-  │───→│ sf.read() → numpy arr   │
+│   声文件导入  │    │   editor/import  │    │ (纯文件 I/O，无风险)     │
+│             │    │                  │    │                         │
+│ ② 拖拽裁剪   │───→│ POST /api/bell-  │───→│ arr[start:end]          │
+│   滑块选区间  │    │   editor/trim    │    │ (纯 numpy 切片，无风险)  │
+│             │    │                  │    │                         │
+│ ③ 输入TTS文字│───→│ POST /api/bell-  │───→│ edge_tts.Communicate()  │
+│   + 选语音   │    │   editor/tts     │    │  → raw PCM 内存中处理    │
+│             │    │                  │    │  → 加 WAV 头 → numpy    │
+│             │    │                  │    │  (需要网络，含超时+降级)  │
+│             │    │                  │    │                         │
+│ ④ 混合/拼接  │───→│ POST /api/bell-  │───→│ np.add / np.concatenate │
+│   预览/导出  │    │   editor/mix     │    │ (纯 numpy 运算，无风险)  │
+│             │    │                  │    │                         │
+│ ⑤ 保存为铃声 │───→│ POST /api/bell-  │───→│ sf.write → static/sounds│
+│   + 命名     │    │   editor/save    │    │ → bells 表 INSERT       │
+│             │    │                  │    │ (纯文件 I/O + DB 写入)   │
+└─────────────┘    └──────────────────┘    └─────────────────────────┘
+```
+
+### 可行性结论（最终版）
 
 | 问题 | 回答 |
 |------|------|
-| **技术上可行吗？** | ✅ **完全可行。** 所有操作都可以用 `soundfile` + `numpy` + `pyttsx3` 完成 |
-| **需要 ffmpeg 吗？** | ❌ **不需要。** WAV 是唯一格式，soundfile 原生支持 |
-| **TTS 离线吗？** | ✅ **完全离线。** pyttsx3 调用 Windows SAPI5，不联网 |
-| **支持中文吗？** | ✅ Windows 内置中文语音包，pyttsx3 可选中文 voice |
-| **新增依赖？** | 仅 1 个：`pyttsx3`（`pip install pyttsx3`） |
-| **新增文件？** | `audio_editor.py`（后端处理逻辑）+ 前端页面（集成到铃声管理或独立） |
-| **新增 API？** | 5 条：import / trim / tts / mix / save |
-| **总代码量？** | ~250 行（后端 ~150，前端 100 + JS 80） |
-| **开发时间？** | 后端 ~2 小时，前端 ~3 小时 |
-| **风险？** | 极小。所有库成熟稳定。TTS 质量取决于 Windows 语音包 |
+| **技术上可行吗？** | ✅ **完全可行。** 所有操作 `soundfile` + `numpy` + `edge-tts` 完成 |
+| **需要 ffmpeg 吗？** | ❌ **不需要。** edge-tts 输出 raw PCM，Python wave 模块加头即 WAV |
+| **TTS 需要网络吗？** | ✅ **是，仅创建铃声时需要。** 播放完全离线 |
+| **TTS 效果和 Edge 浏览器一样吗？** | ✅ **完全一样。** 调用的是同一个微软云 TTS 服务 |
+| **断网了怎么办？** | ⏬ 降级到 `pyttsx3`（离线 SAPI5），前端提示使用离线语音 |
+| **新增依赖？** | 2 个：`edge-tts`（主引擎）+ `pyttsx3`（离线降级，可选） |
+| **3 个不引入新 bug 的保证** | ① 不改打铃逻辑 ② 不新增运行时依赖 ③ 不改现有 DB 表 |
+| **总代码量？** | ~280 行（后端 ~170，前端 ~110） |
+| **开发时间？** | 后端 ~2.5 小时，前端 ~3 小时 |
 
 ### 状态
 
