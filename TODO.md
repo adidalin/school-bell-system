@@ -582,6 +582,6 @@ sf.write(final_path, combined, sr)             # 写出新文件
 | 优先级 | 功能 | 工作量 | 依赖 |
 |--------|------|--------|------|
 | P0 | 🔔 **预约铃声（独立页面）** | ~180 行 | 无 |
-| P1 | ✂️ **铃声编辑（导入+裁剪+TTS+合成）** | ~250 行 | `pip install pyttsx3` |
+| P1 | 🔊 **TTS 铃声生成（TTS+铃声合并生成新WAV）** | ~45 行 | `pip install edge-tts` |
 | P2 | 📊 仪表盘（状态监控、播放日志） | ~150 行 | 无 |
 | P3 | 🔐 PocketBase 权限管理 | ~300 行 | Docker + PocketBase |
