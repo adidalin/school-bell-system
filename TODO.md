@@ -400,172 +400,103 @@ bell_check_task → SELECT * FROM task_overrides WHERE task_id=? AND ? BETWEEN s
 
 ---
 
-## 七、铃声编辑功能（导入 + 裁剪 + TTS 合成 + 混合输出）
+## 七、铃声编辑功能——GitHub 搜索与方案讨论
 
-### GitHub 调研结果
+### 搜索结果：已存在的开源项目
 
-| 项目 | Stars | 用途 | 适配度 |
-|------|-------|------|--------|
-| [rany2/edge-tts](https://github.com/rany2/edge-tts) | 11.3k | 调用 Edge 在线 TTS 服务，高质量中文神经语音 | ⭐⭐⭐⭐⭐（首选） |
-| [bastibe/python-soundfile](https://github.com/bastibe/python-soundfile) | 1.2k | 音频读写，numpy 数组 | ⭐⭐⭐⭐⭐（已安装） |
-| [nateshmbhat/pyttsx3](https://github.com/nateshmbhat/pyttsx3) | 2.5k | 离线 TTS，Windows SAPI5 | ⭐⭐⭐⭐（离线降级方案） |
-| [naomiaro/waveform-playlist](https://github.com/naomiaro/waveform-playlist) | 1.6k | 前端波形编辑器 | ⭐⭐（太重，React 依赖） |
-| [malmr/web-audio-visualizer](https://github.com/malmr/web-audio-visualizer) | 1 | Flask + Canvas 波形显示 | ⭐⭐⭐⭐（轻量可参考） |
+| 项目 | Stars | 核心功能 | TTS | 裁剪 | 适配度 |
+|------|-------|---------|-----|------|--------|
+| [pkalogiros/AudioMass](https://github.com/pkalogiros/AudioMass) | 2.8k | 完整波形编辑器，裁剪切效果，多轨混音 | ❌ | ✅ | ⭐⭐⭐ 参考波形渲染 |
+| [naomiaro/waveform-playlist](https://github.com/naomiaro/waveform-playlist) | 1.6k | React 多轨编辑器，拖拽裁剪，效果链 | ❌ | ✅ | ⭐⭐ AGPL 协议+太重 |
+| [steveseguin/tts.rocks](https://github.com/steveseguin/tts.rocks) | 30 | 浏览器端多引擎 TTS + 波形播放 | ✅ | ❌ | ⭐⭐⭐ TTS 交互参考 |
+| [rany2/edge-tts](https://github.com/rany2/edge-tts) | 11.3k | Python 调用 Edge TTS 服务 | ✅ | ❌ | ⭐⭐⭐⭐⭐ 直接使用 |
+| [omalab/web-audio-visualizer](https://github.com/malmr/web-audio-visualizer) | 1 | Flask + Canvas 波形显示 | ❌ | ❌ | ⭐⭐⭐ 架构参考 |
+| [Srikanthmadhan/Audio-Cutter-Web](https://github.com/Srikanthmadhan/Audio-Cutter-Web) | — | 轻量纯前端波形裁剪 | ❌ | ✅ | ⭐⭐ 裁剪交互参考 |
 
-### 技术方案选择：edge-tts 详解
+### 专家分组讨论
 
-**为什么选 edge-tts 而不是微软 SAPI5 或 pyttsx3：**
+**陈工（架构）——"能用吗？怎么用？"**
 
-| 对比项 | edge-tts（Edge 在线 TTS） | pyttsx3（Windows SAPI5） |
-|--------|--------------------------|-------------------------|
-| **GitHub Stars** | 11.3k | 2.5k |
-| **中文语音质量** | ⭐⭐⭐⭐⭐ 神经网络语音，自然流畅 | ⭐⭐⭐ 较机械，微软旧引擎 |
-| **中文可选语音** | 10+（Xiaoxiao/Yunxi/Yunyang/Xiaohan...） | 1-2（取决于 Windows 版本） |
-| **语音风格** | 支持（general/cheerful/sad/call等） | 不支持 |
-| **语速/音量/音调** | ✅ 全部支持 | ✅ 全部支持 |
-| **导出格式** | MP3 / raw PCM | WAV |
-| **需要网络** | ✅ 是（调用微软云服务） | ❌ 否（完全离线） |
-| **需要 Edge 浏览器** | ❌ 不需要 | — |
-| **需要 API Key** | ❌ 完全免费 | — |
-| **跨平台** | ✅ Linux/macOS/Windows | ✅ Linux/macOS/Windows |
-
-**核心关注点——断网怎么办：**
-
-> edge-tts 需要互联网连接才能生成语音。但铃声编辑的使用场景是"管理员在电脑前操作"，每次只生成一条短语音（5-30 秒），网络中断的可能性很低。即使偶尔断网，可以提示"当前无网络，TTS 功能不可用"。
+> 逐一看完代码后结论：**没有现成的项目可以直接拿来用。** 三个硬伤：
 >
-> **更稳妥的方案：双引擎策略**
+> 1. **功能不全**。没有一个项目同时满足"TTS + 裁剪 + 混音 + 保存到服务器"四件套。AudioMass 有裁剪没 TTS，tts.rocks 有 TTS 没裁剪，Audio-Cutter-Web 有裁剪没后端保存。
+>
+> 2. **技术栈不匹配**。几乎全部是 npm/webpack/vite 构建的 SPA。我们的系统是 pure HTML + vanilla JS + Flask Jinja2 模板，没有任何构建工具。强行引入 npm 项目要先搭 webpack，为了一个编辑功能搞一套构建体系，得不偿失。
+>
+> 3. **没有"保存到服务器"的能力**。所有纯前端工具裁剪完只能下载到本地，不能 POST 到服务器写入 `bells` 表和 `static/sounds/` 目录。这是本质差异——我们的铃声需要服务端确认和持久化。
+>
+> **但是参考价值很大。** 建议策略：
+>
+> | 项目 | 参考什么 | 怎么参考 |
+> |------|---------|---------|
+> | **AudioMass** | Canvas 波形渲染 | `ui.js` 中的 draw 函数（纯 JS，零依赖） |
+> | **AudioMass** | 鼠标选区拖拽 | `drag.js` 的事件处理逻辑 |
+> | **web-audio-visualizer** | Flask API 设计 | 和我们的架构完全一致 |
+> | **tts.rocks** | TTS 前端 UI 布局 | 语音选择、语速控制、预览播放 |
+>
+> **结论：参考不照搬。自己写一个轻量版本（~200行 JS + ~150 行 Python），比集成任何现有项目更省力、更可控。**
+
+**张老师（产品）——"用户体验上能用吗？"**
+
+> **AudioMass（2.8k⭐）——最接近，但操作链断裂**
+>
+> 如果集成 AudioMass，用户流程是：
 > ```
-> def generate_tts(text, voice="zh-CN-XiaoxiaoNeural"):
->     try:
->         # 首选 edge-tts（高质量）
->         return edge_tts_generate(text, voice)
->     except (ConnectionError, TimeoutError):
->         # 降级到 pyttsx3（离线）
->         return pyttsx3_generate(text, "Chinese")
+> 打开 AudioMass → 导入音频 → 裁剪 → 下载 WAV → 回到铃声系统 → 上传 → 保存
 > ```
-> 
-> 一旦 TTS 生成完毕保存为 WAV 文件，之后播放完全不依赖网络。**网络只影响"创建铃声"这一刻，不影响"响铃"这一刻。**
-
-#### 音频格式问题的解决方案
-
-edge-tts 默认输出 MP3，而我们的系统播放 WAV。但 edge-tts 支持 `raw-24khz-16bit-mono-pcm` 输出格式——以原始 PCM 流替代 MP3，在 Python 端加上 WAV 文件头即可转成标准 WAV：
-
-```
-edge-tts → 设置 output_format="raw-24khz-16bit-mono-pcm"
-         → 收到原始 PCM bytes（16-bit little-endian，24kHz，单声道）
-         → Python 用 wave 模块加上 RIFF 头
-         → 保存为 .wav 文件（零 ffmpeg，零额外依赖）
-```
-
-Python 代码示意（3 行）：
-```python
-import wave, struct
-with wave.open("output.wav", "wb") as w:
-    w.setnchannels(1); w.setsampwidth(2); w.setframerate(24000)
-    w.writeframes(pcm_bytes)
-```
-
-#### 对现有系统的兼容性分析
-
-**3 个关键保证：**
-
-> 1. ❌ **不修改现有打铃逻辑。** 铃声编辑是独立功能，新生成的铃声只是 `bells` 表多一条记录 + `static/sounds/` 多一个 WAV 文件。打铃路径 `task → bell_type → bell.filepath` 不变。
+> 操作在两个工具之间跳转，属于"集成但不好用"。但 AudioMass 的**波形渲染和选区拖拽的交互设计**是业界标杆，值得模仿。
 >
-> 2. ❌ **不引入新运行时依赖。** `edge-tts` 只在呼叫 `/api/bell-editor/tts` 时才被加载。打铃线程和调度线程完全不受影响。`pip install edge-tts` 后导入 `edge_tts` 本身不阻塞，不抢占 GIL。
+> **tts.rocks（30⭐）——有趣的 TTS 前端**
 >
-> 3. ❌ **不修改现有数据库表。** 铃声编辑只操作 `bells` 表（INSERT）。现有 `tasks`, `schedules`, `zones`, `task_overrides` 全部不动。
+> 它在浏览器端集成了 Kokoro/Piper/eSpeak 等 TTS 引擎，但：
+> - AI 模型很大（~100MB+），首次加载慢
+> - 中文效果不如 edge-tts 云端神经网络语音（Xiaoxiao/Yunxi）
+> - 参考它的语音选择 UI、语速滑块设计就好
+>
+> **建议：站在巨人肩膀上造小轮子。** 不引入外部构建依赖，只从中提取设计思路。
+>
+> ```
+> 前端：参考 AudioMass 的 Canvas 波形 + 选区拖拽（~80行 JS）
+> TTS：pip install edge-tts（直接调用微软云，最省事）
+> 后端：Python soundfile + numpy（已有）
+> 保存：现有 bells 表 + static/sounds/（已有）
+> 总代码量 ~300行，零构建负担
+> ```
 
-**专家讨论：**
+**王工（运维）——"稳定性和维护风险怎样？"**
 
-**陈工（架构）**：
+> 逐一评估风险：
+>
+> **AudioMass（2.8k⭐）**：MIT 协议，代码质量高，194 commits，活跃维护。可以直接复制参考其中的 JS 代码（MIT 允许）。如果未来想升级，可以考虑 iframe 嵌入，但需要对它的 build 流程做适配。
+>
+> **waveform-playlist（1.6k⭐）**：**AGPL-3.0 协议**（有传染性！）。React 生态，npm 构建。两个硬伤：① AGPL 协议要求派生作品也必须 AGPL，不适合闭源部署 ② React 和 vanilla JS 不兼容。❌ 排除。
+>
+> **tts.rocks（30⭐）**：MIT 协议。纯前端，TTS 模型在浏览器加载。如果它在后台下载大模型，会消耗用户带宽。风险低但体验可能受影响。
+>
+> **其余项目（<10⭐）**：代码质量未经验证，不建议直接依赖，只参考实现思路。
+>
+> **风险评估表：**
+>
+> | 方案 | 风险 | 维护成本 | 适配度 | 推荐 |
+> |------|------|---------|--------|------|
+> | 直接集成 AudioMass | 中（iframe 通信复杂） | 高 | 60% | ❌ |
+> | 直接集成 waveform-playlist | 高（AGPL+React） | 高 | 20% | ❌❌ |
+> | **参考 + 自研轻量版** | **低** | **低（~300行）** | **100%** | **✅✅** |
+>
+> **结论和之前一致——自研轻量版本最稳妥。不引入外部依赖风险，代码量可控，完全掌控。**
 
-> edge-tts 的架构决定了它和我们的系统是一个松耦合关系——它只在"创建铃声"时才被调用，打完电话就挂断。两个独立进程的感觉，不会互相影响。
->
-> 唯一要注意的是：
->
-> 1. **异步调用**。edge-tts 使用 `asyncio`（aiohttp WebSocket），而 Flask 是同步的。需要 `asyncio.run()` 包裹，或者 `loop.run_until_complete()`。Flask 路由里面直接 `asyncio.run(communicate(...))` 即可——每次调用创建一个新 event loop，用完就丢，不会和 APScheduler 的 event loop 冲突（APScheduler 默认不使用 asyncio）。
->
-> 2. **超时处理**。网络请求可能超时。设置 15 秒超时时间，超时后回到降级策略或返回错误信息给前端。
->
-> 3. **临时文件清理**。TTS 生成的临时文件要及时清理。建议全程在内存中处理（PCM bytes → numpy array → 混音 → 写出最终文件），不写中间文件。
->
-> 4. **edge-tts 是否会被微软封禁？** 这是一个社区维护的项目，通过模拟 Edge 浏览器的 WebSocket 握手来访问公开服务。微软没有官方禁止，但也没有保证永远可用。这个项目已经存在 3 年+，Star 11k+，社区活跃。如果真的被封禁，我们可以切到 pyttsx3，或者当时再评估其他方案。
-
-**张老师（产品）**：
-
-> 用户要的是两件事：
->
-> 1. 铃声编辑功能"能不能做"——✅ 完全可以
-> 2. 稳定的 TTS 语音——⏳ 需要用真实环境测试
->
-> 我的建议是这样：
->
-> - 先用 edge-tts 开发完成
-> - 部署后在现场测试 TTS 效果（需要网络）
-> - 如果网络不稳定，后台加装 pyttsx3 作为 fallback
->
-> 学校的网络一般不会太差，至少办公室的电脑肯定是联网的。管理员在电脑前操作铃声编辑，网络十拿九稳。
->
-> 流程设计上，让用户操作的前两步（导入音频、裁剪）完全离线可用，只有 TTS 这一步需要网络。这样即使断网，用户也能完成其他编辑工作。
-
-**王工（运维）**：
-
-> 我说一下运维角度的风险评估：
->
-> **风险矩阵：**
->
-> | 风险 | 概率 | 影响 | 应对 |
-> |------|------|------|------|
-> | 编辑时断网 | 低 | TTS 失败，不能生成语音 | fallback 到 pyttsx3 + 前端提示"网络不可用，使用离线语音" |
-> | edge-tts 被微软封禁 | 极低 | 整个 TTS 功能不可用 | 切到 pyttsx3，或等社区修复 |
-> | 生成的铃声文件过多 | 低 | 硬盘空间占用 | 限制最多生成 200 个，超限提示清理 |
-> | 用户把乱七八糟的音频导入 | 中 | 音质差、尺度过大 | 前端限制文件大小 10MB、格式 WAV/MP3 |
->
-> **关于离线降级方案 pyttsx3：**
->
-> `pip install pyttsx3` 本身不含任何安全隐患。它只是调用 Windows 系统的 SAPI5 COM 接口，和系统自带的语音功能一样可靠。即使 asyncio 失败，它也不会影响 Flask 的主线程——降级的 if 分支在 `except` 块里，互斥。
->
-> **结论：零风险，不会引入新 bug。**
-
-### 数据流（更新版）
-
-```
-┌─────────────┐    ┌──────────────────┐    ┌─────────────────────────┐
-│ 前端页面     │    │ Flask API         │    │ 后端处理                │
-│             │    │                  │    │                         │
-│ ① 选择已有铃 │───→│ POST /api/bell-  │───→│ sf.read() → numpy arr   │
-│   声文件导入  │    │   editor/import  │    │ (纯文件 I/O，无风险)     │
-│             │    │                  │    │                         │
-│ ② 拖拽裁剪   │───→│ POST /api/bell-  │───→│ arr[start:end]          │
-│   滑块选区间  │    │   editor/trim    │    │ (纯 numpy 切片，无风险)  │
-│             │    │                  │    │                         │
-│ ③ 输入TTS文字│───→│ POST /api/bell-  │───→│ edge_tts.Communicate()  │
-│   + 选语音   │    │   editor/tts     │    │  → raw PCM 内存中处理    │
-│             │    │                  │    │  → 加 WAV 头 → numpy    │
-│             │    │                  │    │  (需要网络，含超时+降级)  │
-│             │    │                  │    │                         │
-│ ④ 混合/拼接  │───→│ POST /api/bell-  │───→│ np.add / np.concatenate │
-│   预览/导出  │    │   editor/mix     │    │ (纯 numpy 运算，无风险)  │
-│             │    │                  │    │                         │
-│ ⑤ 保存为铃声 │───→│ POST /api/bell-  │───→│ sf.write → static/sounds│
-│   + 命名     │    │   editor/save    │    │ → bells 表 INSERT       │
-│             │    │                  │    │ (纯文件 I/O + DB 写入)   │
-└─────────────┘    └──────────────────┘    └─────────────────────────┘
-```
-
-### 可行性结论（最终版）
+### 结论
 
 | 问题 | 回答 |
 |------|------|
-| **技术上可行吗？** | ✅ **完全可行。** 所有操作 `soundfile` + `numpy` + `edge-tts` 完成 |
-| **需要 ffmpeg 吗？** | ❌ **不需要。** edge-tts 输出 raw PCM，Python wave 模块加头即 WAV |
-| **TTS 需要网络吗？** | ✅ **是，仅创建铃声时需要。** 播放完全离线 |
-| **TTS 效果和 Edge 浏览器一样吗？** | ✅ **完全一样。** 调用的是同一个微软云 TTS 服务 |
-| **断网了怎么办？** | ⏬ 降级到 `pyttsx3`（离线 SAPI5），前端提示使用离线语音 |
-| **新增依赖？** | 2 个：`edge-tts`（主引擎）+ `pyttsx3`（离线降级，可选） |
-| **3 个不引入新 bug 的保证** | ① 不改打铃逻辑 ② 不新增运行时依赖 ③ 不改现有 DB 表 |
-| **总代码量？** | ~280 行（后端 ~170，前端 ~110） |
+| **有现成可用的项目吗？** | ❌ 没有。没有任何项目满足"TTS+裁剪+混音+保存到服务器" |
+| **有参考价值的项目吗？** | ✅ AudioMass（波形交互）、edge-tts（TTS引擎）、tts.rocks（TTS UI） |
+| **推荐方案？** | **参考 + 自研轻量版**，前端参考 AudioMass Canvas，后端 edge-tts + soundfile + numpy |
+| **为什么不直接集成？** | ① 技术栈不匹配 ② 没有后端保存接口 ③ 集成比自研更复杂 |
+| **新增依赖？** | 仅 `pip install edge-tts`，前端零新增依赖 |
+| **总代码量？** | ~300 行（后端 ~150 + 前端 ~150） |
 | **开发时间？** | 后端 ~2.5 小时，前端 ~3 小时 |
+| **风险？** | 极低。不改变现有系统架构，不引入构建工具 |
 
 ### 状态
 
