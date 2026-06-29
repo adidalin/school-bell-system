@@ -15,6 +15,7 @@ from io import BytesIO
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, make_response
 from models import get_db, init_db, add_log, get_setting, set_setting
 from engine import engine
+from tts import tts_manager
 
 os.makedirs("logs", exist_ok=True)
 os.makedirs("static/sounds", exist_ok=True)
@@ -419,8 +420,42 @@ def api_bells_list():
     return jsonify({"success": True, "bells": result, "bindings": binding_map})
 
 
+@app.route("/api/prompts", methods=["GET"])
+def api_prompts_list():
+    """获取提示音列表（prompt_开头的文件）"""
+    prompts = []
+    sounds_dir = os.path.join("static", "sounds")
+    if os.path.exists(sounds_dir):
+        for f in os.listdir(sounds_dir):
+            if f.startswith("prompt_") and f.endswith((".wav", ".mp3")):
+                name = f[7:].rsplit(".", 1)[0]  # 去掉prompt_前缀和扩展名
+                prompts.append({"filename": f, "name": name})
+    return jsonify({"success": True, "prompts": prompts})
+
+
 @app.route("/api/bells/upload", methods=["POST"])
 def api_bell_upload():
+    # 组合铃声处理（不需要文件）
+    bell_type = request.form.get("bell_type", "custom")
+    if bell_type == "combo":
+        bell_name = request.form.get("name", "")
+        combo_data = request.form.get("filename", "")
+        if not bell_name:
+            return jsonify({"error": "请输入组合名称"}), 400
+        if not combo_data:
+            return jsonify({"error": "组合配方为空"}), 400
+        
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO bells (name, filename, bell_type, duration, uploaded_at) VALUES (?,?,?,?,?)",
+            (bell_name, combo_data, "combo", 0, datetime.now().isoformat())
+        )
+        conn.commit()
+        conn.close()
+        add_log("INFO", "bell", f"创建组合铃声: {bell_name}")
+        return jsonify({"success": True, "message": f"组合铃声'{bell_name}'已创建"})
+    
+    # 普通铃声处理
     if "file" not in request.files:
         return jsonify({"error": "没有文件"}), 400
 
@@ -433,7 +468,12 @@ def api_bell_upload():
     if ext not in (".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".wma"):
         return jsonify({"error": f"不支持的格式{ext}，支持: MP3/WAV/OGG/M4A/AAC/FLAC/WMA"}), 400
 
-    safe_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.filename}"
+    # 提示音类型不加时间戳前缀，其他类型加时间戳
+    bell_type = request.form.get("bell_type", "custom")
+    if bell_type == "prompt":
+        safe_name = f"prompt_{request.form.get('name', 'audio')}{ext}"
+    else:
+        safe_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.filename}"
     filepath = os.path.join("static", "sounds", safe_name)
     f.save(filepath)
 
@@ -1189,3 +1229,243 @@ def api_bell_schedule_delete(sid):
 def handle_500(e):
     logger.error(f"500 Internal Server Error: {e}", exc_info=True)
     return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
+
+
+# ====== API: TTS语音 ======
+@app.route("/api/tts/voices", methods=["GET"])
+def api_tts_voices():
+    """获取可用音色列表"""
+    voices = tts_manager.list_voices()
+    current_voice = get_setting("tts_voice", "zh-CN-XiaoxiaoNeural")
+    return jsonify({
+        "success": True,
+        "voices": voices,
+        "current_voice": current_voice
+    })
+
+
+@app.route("/api/tts/preview", methods=["POST"])
+def api_tts_preview():
+    """试听TTS语音"""
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "").strip()
+    voice = data.get("voice", "")
+    
+    if not text:
+        return jsonify({"error": "请输入试听文本"}), 400
+    
+    print(f"[TTS] Preview request: text={text[:50]}, voice={voice}")
+    logger.info(f"TTS预览请求: text={text[:50]}..., voice={voice}")
+    
+    # 生成预览文件
+    try:
+        path = tts_manager.preview(text, voice=voice or None)
+        print(f"[TTS] Preview result: path={path}")
+        logger.info(f"TTS预览结果: path={path}")
+        if path:
+            # 返回可访问的URL
+            url = f"/{path.replace(os.sep, '/')}"
+            return jsonify({"success": True, "url": url})
+        else:
+            return jsonify({"error": "TTS生成失败"}), 500
+    except Exception as e:
+        print(f"[TTS] Preview error: {e}")
+        logger.error(f"TTS预览异常: {e}", exc_info=True)
+        return jsonify({"error": f"TTS生成异常: {str(e)}"}), 500
+
+
+@app.route("/api/tts/generate", methods=["POST"])
+def api_tts_generate():
+    """生成TTS音频（供组合铃声等使用）"""
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "").strip()
+    voice = data.get("voice", "")
+    
+    if not text:
+        return jsonify({"error": "请输入文本"}), 400
+    
+    # 生成文件（带缓存）
+    path = tts_manager.generate(text, voice=voice or None)
+    if path:
+        url = f"/{path.replace(os.sep, '/')}"
+        return jsonify({"success": True, "url": url, "path": path})
+    else:
+        return jsonify({"error": "TTS生成失败"}), 500
+
+
+@app.route("/api/tts/settings", methods=["GET"])
+def api_tts_settings_get():
+    """获取TTS设置"""
+    return jsonify({
+        "success": True,
+        "settings": {
+            "tts_provider": get_setting("tts_provider", "edge"),
+            "tts_voice": get_setting("tts_voice", "zh-CN-XiaoxiaoNeural"),
+            "tts_rate": get_setting("tts_rate", "+0%"),
+            "tts_volume": get_setting("tts_volume", "+0%"),
+            "xiaomi_api_key": get_setting("xiaomi_api_key", ""),
+            "xiaomi_voice": get_setting("xiaomi_voice", "Chloe")
+        }
+    })
+
+
+@app.route("/api/tts/settings", methods=["POST"])
+def api_tts_settings_update():
+    """保存TTS设置"""
+    data = request.get_json(silent=True) or {}
+    
+    for key in ["tts_provider", "tts_voice", "tts_rate", "tts_volume", "xiaomi_api_key", "xiaomi_voice"]:
+        if key in data:
+            set_setting(key, data[key])
+    
+    add_log("INFO", "settings", "更新TTS设置")
+    return jsonify({"success": True, "message": "TTS设置已保存"})
+
+
+@app.route("/api/tts/test_xiaomi", methods=["POST"])
+def api_tts_test_xiaomi():
+    """检测小米API Key是否有效"""
+    try:
+        api_key = get_setting("xiaomi_api_key", "")
+        if not api_key:
+            return jsonify({"success": False, "error": "请先输入API Key"})
+        
+        import urllib.request
+        
+        # 发送测试请求
+        request_data = {
+            "model": "mimo-v2.5-tts",
+            "messages": [
+                {"role": "user", "content": "用清晰自然的声音朗读"},
+                {"role": "assistant", "content": "你好"}
+            ],
+            "audio": {
+                "format": "wav",
+                "voice": "Chloe"
+            }
+        }
+        
+        req = urllib.request.Request(
+            "https://api.xiaomimimo.com/v1/chat/completions",
+            data=json.dumps(request_data).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+        )
+        
+        resp = urllib.request.urlopen(req, timeout=15)
+        result = json.loads(resp.read().decode("utf-8"))
+        
+        if "choices" in result and len(result["choices"]) > 0:
+            return jsonify({"success": True, "message": "API Key有效，连接成功"})
+        else:
+            return jsonify({"success": False, "error": "API响应异常"})
+            
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            return jsonify({"success": False, "error": "API Key无效，请检查"})
+        return jsonify({"success": False, "error": f"HTTP错误: {e.code}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"连接失败: {str(e)}"})
+
+
+# ====== API: 实时广播 ======
+@app.route("/api/broadcast", methods=["POST"])
+def api_broadcast():
+    """实时广播 - 最高优先级，打断当前播放"""
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "").strip()
+    zone_ids = data.get("zone_ids", [])  # 区域ID列表
+    
+    if not text:
+        return jsonify({"error": "请输入广播内容"}), 400
+    
+    if not zone_ids:
+        return jsonify({"error": "请选择广播区域"}), 400
+    
+    # 生成TTS音频
+    tts_path = tts_manager.generate(text)
+    if not tts_path:
+        return jsonify({"error": "TTS生成失败，请检查网络"}), 500
+    
+    # 调用引擎广播（打断当前播放）
+    result = engine.broadcast(zone_ids, tts_path)
+    
+    if result:
+        add_log("INFO", "broadcast", f"实时广播: {text[:50]}... → 区域{zone_ids}")
+        return jsonify({"success": True, "message": f"正在广播到 {len(zone_ids)} 个区域"})
+    else:
+        return jsonify({"error": "广播失败"}), 500
+
+
+@app.route("/api/broadcast/stop", methods=["POST"])
+def api_broadcast_stop():
+    """停止广播"""
+    data = request.get_json(silent=True) or {}
+    zone_ids = data.get("zone_ids", [])
+    
+    if not zone_ids:
+        # 停止所有区域
+        engine.stop_broadcast()
+        return jsonify({"success": True, "message": "已停止所有广播"})
+    else:
+        for zone_id in zone_ids:
+            engine.stop_broadcast(zone_id)
+        return jsonify({"success": True, "message": f"已停止 {len(zone_ids)} 个区域的广播"})
+
+
+# ====== API: 预约铃声 ======
+@app.route("/api/overrides", methods=["GET"])
+def api_overrides_list():
+    """获取预约铃声列表"""
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT o.*, st.task_name, st.time as task_time, st.zone_id,
+               z.name as zone_name, b.name as bell_name
+        FROM task_overrides o
+        JOIN schedule_tasks st ON o.task_id = st.id
+        JOIN zones z ON st.zone_id = z.id
+        JOIN bells b ON o.bell_id = b.id
+        ORDER BY o.start_date DESC
+    """).fetchall()
+    conn.close()
+    return jsonify({"success": True, "overrides": [dict(r) for r in rows]})
+
+
+@app.route("/api/overrides", methods=["POST"])
+def api_override_create():
+    """创建预约铃声"""
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    bell_id = data.get("bell_id")
+    
+    if not all([task_id, start_date, end_date, bell_id]):
+        return jsonify({"error": "参数不完整"}), 400
+    
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO task_overrides (task_id, start_date, end_date, bell_id, created_at) VALUES (?,?,?,?,?)",
+            (task_id, start_date, end_date, bell_id, datetime.now().isoformat())
+        )
+        conn.commit()
+        add_log("INFO", "override", f"创建预约铃声: 任务{task_id} {start_date}~{end_date}")
+        return jsonify({"success": True, "message": "预约创建成功"})
+    except Exception as e:
+        return jsonify({"error": f"创建失败: {str(e)}"}), 400
+    finally:
+        conn.close()
+
+
+@app.route("/api/overrides/<int:oid>", methods=["DELETE"])
+def api_override_delete(oid):
+    """删除预约铃声"""
+    conn = get_db()
+    conn.execute("DELETE FROM task_overrides WHERE id=?", (oid,))
+    conn.commit()
+    conn.close()
+    add_log("INFO", "override", f"删除预约铃声: ID={oid}")
+    return jsonify({"success": True, "message": "预约已取消"})

@@ -219,6 +219,19 @@ def init_db():
         )
     """)
 
+    # 预约铃声表（任务级临时换铃）
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS task_overrides (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            bell_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT '',
+            UNIQUE(task_id, start_date)
+        )
+    """)
+
     # 初始化默认数据
     _init_default_data(c)
 

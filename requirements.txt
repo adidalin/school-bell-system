@@ -6,3 +6,4 @@ soundfile>=0.12
 ntplib>=0.4
 openpyxl>=3.1
 pygame>=2.5
+edge-tts>=7.0

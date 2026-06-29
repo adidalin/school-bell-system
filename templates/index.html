@@ -178,10 +178,10 @@ tbody tr:hover{background:var(--primary-light)}
     </div>
     <div class="nav-group">
       <div class="nav-group-label">管理</div>
-      <div class="nav-item" data-page="schedules"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></span><span>课表管理</span></div>
       <div class="nav-item" data-page="schedule_v2"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></span><span>排课管理</span></div>
       <div class="nav-item" data-page="zones"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M2 20h20M5 20V8l7-5 7 5v12"/><path d="M9 20v-5h6v5"/></svg></span><span>区域控制</span></div>
       <div class="nav-item" data-page="bells"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span>铃声管理</span></div>
+      <div class="nav-item" data-page="overrides"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span>预约铃声</span></div>
     </div>
     <div class="nav-group">
       <div class="nav-group-label">配置</div>
@@ -211,6 +211,44 @@ tbody tr:hover{background:var(--primary-light)}
     <!-- ===== 总览 ===== -->
     <div class="page active" id="page-dashboard">
       <div id="dashAlert"></div>
+
+      <!-- 快速广播（最高优先级） -->
+      <div class="card" style="border-left:4px solid var(--error);background:linear-gradient(135deg,#fff5f5,#fff)">
+        <div class="card-header">
+          <div><div class="card-title" style="color:var(--error)">快速广播</div><div class="card-desc">最高优先级 - 打断当前播放，直接广播到指定区域</div></div>
+          <span id="broadcastStatus" class="tag tag-green">就绪</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+          <div class="form-group" style="min-width:200px;flex:1">
+            <label class="form-label">广播区域</label>
+            <div id="broadcastZones" style="display:flex;gap:8px;flex-wrap:wrap">
+              <!-- 动态填充 -->
+            </div>
+          </div>
+          <div class="form-group" style="min-width:120px">
+            <label class="form-label">&nbsp;</label>
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-sm btn-outline" onclick="broadcastSelectAll()">全选</button>
+              <button class="btn btn-sm btn-ghost" onclick="broadcastClearAll()">清空</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">广播内容</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="broadcastText" placeholder="请输入广播内容..." style="flex:1">
+            <button class="btn btn-danger" id="broadcastBtn" onclick="startBroadcast()">立即广播</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+          <span style="font-size:12px;color:var(--text-tertiary);line-height:28px">常用：</span>
+          <button class="btn btn-sm btn-outline" onclick="setBroadcastText('请保持安静')">请保持安静</button>
+          <button class="btn btn-sm btn-outline" onclick="setBroadcastText('考试开始，请考生停止答题')">考试开始</button>
+          <button class="btn btn-sm btn-outline" onclick="setBroadcastText('考试结束，请考生交卷')">考试结束</button>
+          <button class="btn btn-sm btn-outline" onclick="setBroadcastText('请班主任到会议室')">请班主任</button>
+          <button class="btn btn-sm btn-outline" onclick="setBroadcastText('请全体师生到操场集合')">全体集合</button>
+        </div>
+      </div>
 
       <!-- 今日状态（按区域） -->
       <div class="card" style="border-left:4px solid var(--primary)">
@@ -321,8 +359,12 @@ tbody tr:hover{background:var(--primary-light)}
     <!-- ===== 铃声 ===== -->
     <div class="page" id="page-bells">
       <div class="card">
-        <div class="card-header"><div class="card-title">铃声库</div><button class="btn btn-primary" onclick="uploadBell()">上传铃声</button></div>
+        <div class="card-header"><div class="card-title">铃声库</div><div class="flex gap-8"><button class="btn btn-primary" onclick="uploadBell()">上传铃声</button><button class="btn btn-success" onclick="openComboDialog()">+ 新建组合铃声</button></div></div>
         <div class="table-wrap"><table><thead><tr><th>名称</th><th>类型</th><th>文件</th><th>操作</th></tr></thead><tbody id="bellTbody"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">提示音管理</div><div class="card-desc">用于组合铃声的前置提示音（如：叮咚、警报）</div></div><button class="btn btn-primary" onclick="uploadPrompt()">上传提示音</button></div>
+        <div id="promptList" style="display:flex;flex-wrap:wrap;gap:10px;padding:12px"></div>
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">区域铃声绑定</div><button class="btn btn-primary" onclick="saveAllBindings()">保存绑定</button></div>
@@ -374,6 +416,17 @@ tbody tr:hover{background:var(--primary-light)}
       </div>
     </div>
 
+    <!-- ===== 预约铃声 ===== -->
+    <div class="page" id="page-overrides">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">预约铃声</div><div class="card-desc">为特定课表任务临时替换铃声，到期自动生效，过期自动恢复</div></div>
+          <button class="btn btn-primary" onclick="openOverrideDialog()">+ 新建预约</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>区域</th><th>任务</th><th>时间</th><th>原铃声</th><th>预约铃声</th><th>有效期</th><th>操作</th></tr></thead><tbody id="overrideTbody"></tbody></table></div>
+      </div>
+    </div>
+
     <!-- ===== 设置 ===== -->
     <div class="page" id="page-settings">
       <div class="card">
@@ -418,6 +471,60 @@ tbody tr:hover{background:var(--primary-light)}
             &bull; 实时告警：铃声文件缺失、打铃失败、设备异常<br>
             &bull; 关键操作：课表变更、设置修改<br>
             &bull; 同类告警30分钟内不重复
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TTS 语音设置</div><div class="card-desc">广播和组合铃声使用的语音合成引擎</div></div></div>
+        <div style="max-width:500px">
+          <div class="form-group">
+            <label class="form-label">语音引擎</label>
+            <select id="ttsProvider" style="width:100%" onchange="onTTSProviderChange()">
+              <option value="edge">Edge TTS (微软) - 免费，无需API Key</option>
+              <option value="xiaomi">小米TTS (MiMo) - 高品质，需要API Key</option>
+            </select>
+          </div>
+          <div id="xiaomiApiKeyGroup" style="display:none">
+            <div class="form-group">
+              <label class="form-label">小米API Key</label>
+              <div style="display:flex;gap:8px">
+                <input type="password" id="xiaomiApiKey" style="flex:1" placeholder="输入小米MiMo API Key">
+                <button class="btn btn-primary" onclick="saveXiaomiApiKey()">保存Key</button>
+                <button class="btn btn-outline" onclick="testXiaomiApiKey()">检测</button>
+              </div>
+              <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">
+                在 <a href="https://platform.xiaomimimo.com/console/api-keys" target="_blank">小米MiMo控制台</a> 获取API Key（当前限时免费）
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">默认音色</label>
+            <select id="ttsVoice" style="width:100%">
+              <option value="">--加载中--</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">试听</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="ttsPreviewText" value="现在是上课时间，请同学们准备上课" style="flex:1">
+              <button class="btn btn-primary" onclick="previewTTS()">试听</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-tertiary);margin-top:4px">选择音色后点击试听，确认效果</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">语速调节</label>
+            <select id="ttsRate" style="width:100%">
+              <option value="-30%">慢速 (-30%)</option>
+              <option value="-20%">较慢 (-20%)</option>
+              <option value="-10%">稍慢 (-10%)</option>
+              <option value="+0%" selected>正常</option>
+              <option value="+10%">稍快 (+10%)</option>
+              <option value="+20%">较快 (+20%)</option>
+              <option value="+30%">快速 (+30%)</option>
+            </select>
+          </div>
+          <div class="flex gap-8">
+            <button class="btn btn-success" onclick="saveTTSSettings()">保存TTS设置</button>
           </div>
         </div>
       </div>
@@ -576,8 +683,89 @@ tbody tr:hover{background:var(--primary-light)}
   </div>
 </div>
 
+<!-- 组合铃声编辑弹窗 -->
+<div id="comboModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;padding:24px;width:550px;max-width:90vw;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-size:18px" id="comboModalTitle">新建组合铃声</h3>
+      <button onclick="closeComboDialog()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999">&times;</button>
+    </div>
+    <input type="hidden" id="comboId" value="">
+    <div class="form-group">
+      <label class="form-label">组合名称</label>
+      <input type="text" id="comboName" style="width:100%" placeholder="例如：考试结束铃">
+    </div>
+    <div class="form-group">
+      <label class="form-label">组合配方（按顺序播放）</label>
+      <div id="comboItems" style="border:1px solid var(--border);border-radius:6px;padding:12px;min-height:80px;background:var(--bg-spot)">
+        <!-- 动态填充 -->
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn btn-sm btn-outline" onclick="addComboItem('prompt')">+ 提示音</button>
+        <button class="btn btn-sm btn-outline" onclick="addComboItem('tts')">+ TTS语音</button>
+        <button class="btn btn-sm btn-outline" onclick="addComboItem('bell')">+ 铃声</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:24px">
+      <button class="btn btn-outline" onclick="previewCombo()">预览效果</button>
+      <button class="btn btn-outline" onclick="closeComboDialog()">取消</button>
+      <button class="btn btn-primary" onclick="saveCombo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 预约铃声弹窗 -->
+<div id="overrideModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;padding:24px;width:500px;max-width:90vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-size:18px">新建预约铃声</h3>
+      <button onclick="closeOverrideDialog()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#999">&times;</button>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">区域</label>
+        <select id="overrideZone" style="width:100%" onchange="loadOverrideTasks()">
+          <option value="">--选择区域--</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1">
+        <label class="form-label">课表</label>
+        <select id="overrideSchedule" style="width:100%" onchange="loadOverrideTasks()">
+          <option value="">--选择课表--</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">任务</label>
+      <select id="overrideTask" style="width:100%">
+        <option value="">--请先选择区域和课表--</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">预约铃声</label>
+      <select id="overrideBell" style="width:100%">
+        <option value="">--加载中--</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">开始日期</label>
+        <input type="date" id="overrideStart" style="width:100%">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label class="form-label">结束日期</label>
+        <input type="date" id="overrideEnd" style="width:100%">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:24px">
+      <button class="btn btn-outline" onclick="closeOverrideDialog()">取消</button>
+      <button class="btn btn-primary" onclick="saveOverride()">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
-var PT={dashboard:'系统总览',schedules:'课表管理',schedule_v2:'排课管理',zones:'区域控制',bells:'铃声管理',holidays:'节假日',schedule:'预约控制',settings:'系统设置',logs:'运行日志'};
+var PT={dashboard:'系统总览',schedules:'课表管理',schedule_v2:'排课管理',zones:'区域控制',bells:'铃声管理',holidays:'节假日',schedule:'预约控制',overrides:'预约铃声',settings:'系统设置',logs:'运行日志'};
 var BT={class_start:'上课铃',class_end:'下课铃',prepare:'预备铃',exercise:'课间操',lunch:'午餐铃',school_end:'放学铃',emergency:'紧急铃',custom:'自定义'};
 var ZN={}; // 动态从API获取
 var ZONES=[]; // 缓存区域列表
@@ -587,7 +775,12 @@ var D='';
 function api(path,method,data){
   var opts={method:method||'GET',headers:{'Content-Type':'application/json'}};
   if(data)opts.body=JSON.stringify(data);
-  return fetch(D+path,opts).then(function(r){return r.json()}).catch(function(e){console.error(e);return null});
+  return fetch(D+path,opts).then(function(r){
+    if(!r.ok){
+      return r.json().catch(function(){return {error:'HTTP '+r.status}}).then(function(e){return e});
+    }
+    return r.json();
+  }).catch(function(e){console.error('API Error:',e);return null});
 }
 
 // 初始化：加载区域名称
@@ -630,9 +823,10 @@ function loadPage(pg){
   else if(pg==='schedules')loadSchedules();
   else if(pg==='schedule_v2')loadScheduleV2();
   else if(pg==='zones')loadZones();
-  else if(pg==='bells')loadBells();
+  else if(pg==='bells'){loadBells();loadPrompts();}
   else if(pg==='holidays')loadHolidays();
   else if(pg==='schedule')loadSchedulesPage();
+  else if(pg==='overrides')loadOverrides();
   else if(pg==='settings')loadSettings();
   else if(pg==='logs')loadLogs();
 }
@@ -772,6 +966,10 @@ async function loadScheduleV2(){
   var zSel=document.getElementById('zoneSelectV2');
   zSel.innerHTML='<option value="">-- 选择区域 --</option>';
   ZONES.forEach(function(z){zSel.innerHTML+='<option value="'+z.id+'">'+z.name+'</option>'});
+  // 默认选择第一个区域
+  if(ZONES.length>0){
+    zSel.value=ZONES[0].id;
+  }
   if(zSel.value)loadSchedulesV2();
 }
 async function loadSchedulesV2(){
@@ -848,7 +1046,12 @@ function openTaskModal(taskId){
   var bSel=document.getElementById('taskBellType');
   bSel.innerHTML='';
   for(var i=0;i<BELLS.length;i++){
-    bSel.innerHTML+='<option value="'+BELLS[i].id+'">'+BELLS[i].name+' ('+BELLS[i].filename+')</option>';
+    var bell=BELLS[i];
+    var displayName=bell.name;
+    if(bell.bell_type==='combo'){
+      displayName+=' [组合铃声]';
+    }
+    bSel.innerHTML+='<option value="'+bell.id+'">'+displayName+'</option>';
   }
   
   if(taskId){
@@ -1088,17 +1291,83 @@ async function saveZone(zid){
 
 // ===== 铃声 =====
 var _bellBindings={}; // 缓存绑定信息
+var ALL_BELLS=[]; // 缓存所有铃声
+
 async function loadBells(){
   var d=await api('/api/bells');
   if(!d||!d.success)return;
+  ALL_BELLS=d.bells;
   var h='';
-  d.bells.forEach(function(b){
+  d.bells.forEach(function(b,idx){
     var typeName=BT[b.bell_type]||b.bell_type;
     if(b.bell_type==='custom')typeName='自定义';
-    h+='<tr><td><strong>'+b.name+'</strong></td><td><span class="tag tag-orange">'+typeName+'</span></td><td style="font-size:12px;color:var(--text-tertiary);font-family:var(--mono)">'+b.filename+'</td><td><div class="flex gap-8"><button class="btn btn-primary btn-sm" onclick="playBellFile(\''+b.filename+'\')">试听</button><button class="btn btn-danger btn-sm" onclick="deleteBell('+b.id+')">删除</button></div></td></tr>';
+    if(b.bell_type==='combo')typeName='组合铃声';
+    var displayFile=b.filename;
+    if(b.bell_type==='combo'){
+      try{var combo=JSON.parse(b.filename);displayFile='组合('+combo.items.length+'个)'}catch(e){}
+    }
+    h+='<tr>';
+    h+='<td><strong>'+b.name+'</strong></td>';
+    h+='<td><span class="tag '+(b.bell_type==='combo'?'tag-green':'tag-orange')+'">'+typeName+'</span></td>';
+    h+='<td style="font-size:12px;color:var(--text-tertiary);font-family:var(--mono)">'+displayFile+'</td>';
+    h+='<td><div class="flex gap-8">';
+    h+='<button class="btn btn-primary btn-sm" onclick="playBell('+idx+')">试听</button>';
+    h+='<button class="btn btn-outline btn-sm" onclick="stopBell()">停止</button>';
+    h+='<button class="btn btn-danger btn-sm" onclick="deleteBell('+b.id+')">删除</button>';
+    h+='</div></td>';
+    h+='</tr>';
   });
   document.getElementById('bellTbody').innerHTML=h||'<tr><td colspan="4" style="text-align:center;color:var(--text-quaternary)">暂无铃声</td></tr>';
   renderBellBindings(d.bells, d.bindings||{});
+}
+
+var currentAudio=null; // 当前播放的音频
+
+function playBell(idx){
+  var b=ALL_BELLS[idx];
+  if(!b)return;
+  stopBell(); // 先停止当前播放
+  
+  if(b.bell_type==='combo'){
+    // 组合铃声：解析JSON并顺序播放
+    try{
+      var comboData=JSON.parse(b.filename);
+      var items=comboData.items||[];
+      playComboSequence(items);
+    }catch(e){toast('组合铃声解析失败',true)}
+  }else{
+    currentAudio=new Audio('/static/sounds/'+b.filename);
+    currentAudio.play().catch(function(e){toast('播放失败: '+e.message,true)});
+    toast('正在播放: '+b.name);
+  }
+}
+
+async function playComboSequence(items){
+  toast('正在播放组合铃声...');
+  for(var i=0;i<items.length;i++){
+    var item=items[i];
+    var filepath;
+    if(item.startsWith('tts_cache:')){
+      filepath='/static/tts_cache/'+item.substring(10);
+    }else{
+      filepath='/static/sounds/'+item;
+    }
+    await new Promise(function(resolve){
+      currentAudio=new Audio(filepath);
+      currentAudio.onended=function(){resolve()};
+      currentAudio.onerror=function(){resolve()};
+      currentAudio.play().catch(function(){resolve()});
+    });
+  }
+  toast('播放完成');
+}
+
+function stopBell(){
+  if(currentAudio){
+    currentAudio.pause();
+    currentAudio.currentTime=0;
+    currentAudio=null;
+  }
 }
 // 渲染铃声绑定矩阵
 async function renderBellBindings(bells, bindings){
@@ -1177,12 +1446,326 @@ function uploadBell(){
   };
   input.click();
 }
-function playBellFile(filename){
-  var audio=new Audio('/static/sounds/'+filename);
-  audio.play().catch(function(e){toast('播放失败: '+e.message,true)});
-  toast('正在播放: '+filename);
-}
 async function deleteBell(id){if(!confirm('确认删除？'))return;await api('/api/bells/'+id,'DELETE');loadBells();loadBellsForEditor()}
+
+// ===== 提示音管理 =====
+async function loadPrompts(){
+  var d=await api('/api/prompts');
+  if(!d||!d.success)return;
+  var container=document.getElementById('promptList');
+  if(d.prompts.length===0){
+    container.innerHTML='<div style="color:var(--text-quaternary);padding:12px">暂无提示音，点击上方按钮上传</div>';
+    return;
+  }
+  var h='';
+  d.prompts.forEach(function(p){
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-spot);border:1px solid var(--border);border-radius:6px">';
+    h+='<span style="font-size:13px">'+p.name+'</span>';
+    h+='<button class="btn btn-sm btn-primary" onclick="playPrompt(\''+p.filename+'\')">试听</button>';
+    h+='<button class="btn btn-sm btn-outline" onclick="stopBell()">停止</button>';
+    h+='<button class="btn btn-sm btn-danger" onclick="deletePrompt(\''+p.filename+'\')">删除</button>';
+    h+='</div>';
+  });
+  container.innerHTML=h;
+}
+function playPrompt(filename){
+  stopBell();
+  currentAudio=new Audio('/static/sounds/'+filename);
+  currentAudio.play().catch(function(e){toast('播放失败',true)});
+}
+function uploadPrompt(){
+  var input=document.createElement('input');
+  input.type='file';
+  input.accept='.mp3,.wav';
+  input.onchange=function(e){
+    var file=e.target.files[0];
+    if(!file)return;
+    var name=prompt('提示音名称（如：叮咚、警报）:');
+    if(!name)return;
+    var formData=new FormData();
+    formData.append('file',file);
+    formData.append('name',name);
+    formData.append('bell_type','prompt');
+    fetch('/api/bells/upload',{method:'POST',body:formData})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(d.success){toast('上传成功');loadPrompts();loadBells()}else{toast('上传失败: '+(d.error||''),true)}
+      })
+      .catch(function(e){toast('上传失败',true)});
+  };
+  input.click();
+}
+async function deletePrompt(filename){
+  if(!confirm('确认删除此提示音？'))return;
+  // 通过文件名查找并删除
+  var d=await api('/api/bells');
+  if(d&&d.success){
+    var bell=d.bells.find(function(b){return b.filename===filename});
+    if(bell){
+      await api('/api/bells/'+bell.id,'DELETE');
+      loadPrompts();
+      loadBells();
+    }
+  }
+}
+
+// ===== 组合铃声 =====
+var COMBO_ITEMS=[]; // 当前编辑的组合项
+var BELLS_LIST=[]; // 铃声列表缓存
+var PROMPTS_LIST=[]; // 提示音列表缓存
+
+function openComboDialog(){
+  document.getElementById('comboModal').style.display='flex';
+  document.getElementById('comboModalTitle').textContent='新建组合铃声';
+  document.getElementById('comboId').value='';
+  document.getElementById('comboName').value='';
+  COMBO_ITEMS=[];
+  renderComboItems();
+  loadBellsListForCombo();
+  loadPromptsListForCombo();
+}
+function closeComboDialog(){
+  document.getElementById('comboModal').style.display='none';
+}
+async function loadBellsListForCombo(){
+  var d=await api('/api/bells');
+  if(d&&d.success)BELLS_LIST=d.bells;
+}
+async function loadPromptsListForCombo(){
+  var d=await api('/api/prompts');
+  if(d&&d.success)PROMPTS_LIST=d.prompts;
+}
+function renderComboItems(){
+  var container=document.getElementById('comboItems');
+  if(COMBO_ITEMS.length===0){
+    container.innerHTML='<div style="color:var(--text-quaternary);text-align:center;padding:20px">点击下方按钮添加积木</div>';
+    return;
+  }
+  var h='';
+  COMBO_ITEMS.forEach(function(item,idx){
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:8px;background:#fff;border-radius:4px;margin-bottom:6px;border:1px solid var(--border)">';
+    h+='<span class="tag '+(item.type==='prompt'?'tag-blue':item.type==='tts'?'tag-orange':'tag-green')+'">'+(item.type==='prompt'?'提示音':item.type==='tts'?'TTS语音':'铃声')+'</span>';
+    if(item.type==='prompt'){
+      h+='<select onchange="updateComboItem('+idx+',\'value\',this.value)" style="flex:1">';
+      h+='<option value="">--选择提示音--</option>';
+      PROMPTS_LIST.forEach(function(p){
+        h+='<option value="'+p.filename+'"'+(item.value===p.filename?' selected':'')+'>'+p.name+'</option>';
+      });
+      h+='</select>';
+    }else if(item.type==='tts'){
+      h+='<input type="text" value="'+(item.value||'')+'" onchange="updateComboItem('+idx+',\'value\',this.value)" placeholder="输入TTS文字" style="flex:1">';
+      h+='<button class="btn btn-sm btn-outline" onclick="generateComboTTS('+idx+')">生成</button>';
+    }else{
+      h+='<select onchange="updateComboItem('+idx+',\'value\',this.value)" style="flex:1">';
+      h+='<option value="">--选择铃声--</option>';
+      BELLS_LIST.forEach(function(b){
+        if(b.bell_type!=='combo')h+='<option value="'+b.filename+'"'+(item.value===b.filename?' selected':'')+'>'+b.name+'</option>';
+      });
+      h+='</select>';
+    }
+    h+='<button class="btn btn-sm btn-ghost" onclick="removeComboItem('+idx+')" style="color:var(--error)">×</button>';
+    h+='</div>';
+  });
+  container.innerHTML=h;
+}
+function addComboItem(type){
+  COMBO_ITEMS.push({type:type,value:type==='prompt'?'dingdong.wav':''});
+  renderComboItems();
+}
+function updateComboItem(idx,key,val){
+  COMBO_ITEMS[idx][key]=val;
+}
+function removeComboItem(idx){
+  COMBO_ITEMS.splice(idx,1);
+  renderComboItems();
+}
+async function generateComboTTS(idx){
+  var text=COMBO_ITEMS[idx].value;
+  if(!text){toast('请输入TTS文字',true);return}
+  toast('正在生成TTS...');
+  var r=await api('/api/tts/generate','POST',{text:text});
+  if(r&&r.success){
+    // 从URL中提取文件名
+    var filename=r.url.split('/').pop();
+    COMBO_ITEMS[idx].value=filename;
+    COMBO_ITEMS[idx].tts_generated=true;
+    renderComboItems();
+    toast('TTS生成成功');
+  }else{
+    toast('TTS生成失败',true);
+  }
+}
+async function previewCombo(){
+  if(COMBO_ITEMS.length===0){toast('请先添加积木',true);return}
+  // 生成临时组合并预览
+  var filepaths=[];
+  COMBO_ITEMS.forEach(function(item){
+    if(!item.value)return;
+    // 根据类型选择正确的路径
+    if(item.type==='tts'){
+      // TTS文件在tts_cache目录
+      filepaths.push('/static/tts_cache/'+item.value);
+    }else{
+      // 提示音和铃声在sounds目录
+      filepaths.push('/static/sounds/'+item.value);
+    }
+  });
+  if(filepaths.length===0){toast('没有可播放的音频',true);return}
+  toast('正在预览...');
+  // 顺序播放
+  for(var i=0;i<filepaths.length;i++){
+    await new Promise(function(resolve){
+      var audio=new Audio(filepaths[i]);
+      audio.onended=function(){resolve()};
+      audio.onerror=function(){console.error('播放失败:',filepaths[i]);resolve()};
+      audio.play().catch(function(){resolve()});
+    });
+  }
+  toast('预览完成');
+}
+async function saveCombo(){
+  var name=document.getElementById('comboName').value.trim();
+  if(!name){toast('请输入组合名称',true);return}
+  if(COMBO_ITEMS.length===0){toast('请添加至少一个积木',true);return}
+  // 收集有效的文件名（带路径前缀）
+  var items=[];
+  COMBO_ITEMS.forEach(function(item){
+    if(!item.value)return;
+    if(item.type==='tts'){
+      items.push('tts_cache:'+item.value);
+    }else{
+      items.push(item.value);
+    }
+  });
+  if(items.length===0){toast('没有有效的音频文件',true);return}
+  // 保存到bells表（使用FormData）
+  var comboData=JSON.stringify({items:items});
+  var formData=new FormData();
+  formData.append('name',name);
+  formData.append('bell_type','combo');
+  formData.append('filename',comboData);
+  var r=await fetch('/api/bells/upload',{method:'POST',body:formData}).then(function(res){return res.json()}).catch(function(e){return null});
+  if(r&&r.success){
+    toast('组合铃声保存成功');
+    closeComboDialog();
+    loadBells();
+  }else{
+    toast('保存失败: '+(r?r.error:'网络错误'),true);
+  }
+}
+
+// ===== 预约铃声 =====
+var OVERRIDE_SCHEDULES=[]; // 缓存课表数据
+
+async function loadOverrides(){
+  var d=await api('/api/overrides');
+  if(!d||!d.success)return;
+  var h='';
+  d.overrides.forEach(function(o){
+    h+='<tr>';
+    h+='<td><span class="tag tag-blue">'+o.zone_name+'</span></td>';
+    h+='<td>'+o.task_name+'</td>';
+    h+='<td style="font-family:var(--mono)">'+o.task_time+'</td>';
+    h+='<td>'+o.original_bell+'</td>';
+    h+='<td><span class="tag tag-orange">'+o.bell_name+'</span></td>';
+    h+='<td style="font-size:12px">'+o.start_date+' ~ '+o.end_date+'</td>';
+    h+='<td><button class="btn btn-danger btn-sm" onclick="deleteOverride('+o.id+')">取消</button></td>';
+    h+='</tr>';
+  });
+  document.getElementById('overrideTbody').innerHTML=h||'<tr><td colspan="7" style="text-align:center;color:var(--text-quaternary)">暂无预约</td></tr>';
+}
+async function openOverrideDialog(){
+  document.getElementById('overrideModal').style.display='flex';
+  // 设置默认日期
+  var today=new Date();
+  document.getElementById('overrideStart').value=today.toISOString().slice(0,10);
+  document.getElementById('overrideEnd').value=today.toISOString().slice(0,10);
+  // 加载区域列表
+  var zoneSel=document.getElementById('overrideZone');
+  zoneSel.innerHTML='<option value="">--选择区域--</option>';
+  ZONES.forEach(function(z){
+    zoneSel.innerHTML+='<option value="'+z.id+'">'+z.name+'</option>';
+  });
+  // 加载课表列表
+  var d=await api('/api/schedules');
+  if(d&&d.success){
+    OVERRIDE_SCHEDULES=d.schedules;
+    var schedSel=document.getElementById('overrideSchedule');
+    schedSel.innerHTML='<option value="">--选择课表--</option>';
+    d.schedules.forEach(function(s){
+      schedSel.innerHTML+='<option value="'+s.id+'">'+s.name+(s.is_active?' [默认]':'')+'</option>';
+    });
+  }
+  // 清空任务列表
+  document.getElementById('overrideTask').innerHTML='<option value="">--请先选择区域和课表--</option>';
+  // 加载铃声列表
+  var d2=await api('/api/bells');
+  if(d2&&d2.success){
+    var sel2=document.getElementById('overrideBell');
+    sel2.innerHTML='<option value="">--选择铃声--</option>';
+    d2.bells.forEach(function(b){
+      sel2.innerHTML+='<option value="'+b.id+'">'+b.name+'</option>';
+    });
+  }
+}
+function loadOverrideTasks(){
+  var zoneId=document.getElementById('overrideZone').value;
+  var schedId=document.getElementById('overrideSchedule').value;
+  var taskSel=document.getElementById('overrideTask');
+  
+  if(!zoneId||!schedId){
+    taskSel.innerHTML='<option value="">--请先选择区域和课表--</option>';
+    return;
+  }
+  
+  // 查找选中的课表
+  var schedule=OVERRIDE_SCHEDULES.find(function(s){return s.id==schedId});
+  if(!schedule){
+    taskSel.innerHTML='<option value="">--课表数据加载中--</option>';
+    return;
+  }
+  
+  // 获取该区域的任务
+  var tasks=schedule.zone_tasks[zoneId]||[];
+  taskSel.innerHTML='<option value="">--选择任务--</option>';
+  tasks.forEach(function(t){
+    taskSel.innerHTML+='<option value="'+t.id+'">'+t.task_name+' ('+t.time+')</option>';
+  });
+  
+  if(tasks.length===0){
+    taskSel.innerHTML='<option value="">--该区域无任务--</option>';
+  }
+}
+function closeOverrideDialog(){
+  document.getElementById('overrideModal').style.display='none';
+}
+async function saveOverride(){
+  var taskId=document.getElementById('overrideTask').value;
+  var bellId=document.getElementById('overrideBell').value;
+  var startDate=document.getElementById('overrideStart').value;
+  var endDate=document.getElementById('overrideEnd').value;
+  if(!taskId){toast('请选择任务',true);return}
+  if(!bellId){toast('请选择铃声',true);return}
+  if(!startDate||!endDate){toast('请设置日期范围',true);return}
+  var r=await api('/api/overrides','POST',{task_id:taskId,bell_id:bellId,start_date:startDate,end_date:endDate});
+  if(r&&r.success){
+    toast('预约创建成功');
+    closeOverrideDialog();
+    loadOverrides();
+  }else{
+    toast('创建失败: '+(r?r.error:'网络错误'),true);
+  }
+}
+async function deleteOverride(id){
+  if(!confirm('确认取消此预约？'))return;
+  var r=await api('/api/overrides/'+id,'DELETE');
+  if(r&&r.success){
+    toast('预约已取消');
+    loadOverrides();
+  }else{
+    toast('取消失败',true);
+  }
+}
 
 // ===== 节假日 =====
 async function loadHolidays(){
@@ -1311,6 +1894,9 @@ async function loadSettings(){
   document.getElementById('ntpLastSync').textContent=s.ntp_last_sync||'从未';
   document.getElementById('dingtalkWebhook').value=s.dingtalk_webhook||'';
   document.getElementById('dingtalkEnabled').checked=s.dingtalk_enabled==='1';
+  document.getElementById('passwordInput').value=s.password||'';
+  // 加载TTS设置
+  loadTTSSettings();
 }
 async function saveSettings(){
   var d={
@@ -1328,11 +1914,206 @@ async function saveSettings(){
 async function ntpSync(){var r=await api('/api/ntp/sync','POST');toast(r&&r.success?'校时成功，偏差'+r.offset+'秒':'校时失败',!(r&&r.success));loadSettings();loadDashboard()}
 async function testDingtalk(){var r=await api('/api/dingtalk/test','POST');toast(r&&r.success?'测试消息已发送':'发送失败',!(r&&r.success))}
 
+// ===== TTS设置 =====
+var TTS_VOICES={
+  "edge":[
+    {"id":"zh-CN-XiaoxiaoNeural","name":"晓晓 (女) 温暖亲切"},
+    {"id":"zh-CN-YunxiNeural","name":"云希 (男) 阳光少年"},
+    {"id":"zh-CN-YunjianNeural","name":"云健 (男) 沉稳大气"},
+    {"id":"zh-CN-XiaoyiNeural","name":"晓艺 (女) 活泼可爱"},
+    {"id":"zh-CN-YunyangNeural","name":"云扬 (男) 新闻播报"},
+    {"id":"zh-CN-XiaochenNeural","name":"晓辰 (女) 专业成熟"},
+    {"id":"zh-CN-XiaohanNeural","name":"晓涵 (女) 温柔体贴"},
+    {"id":"zh-CN-XiaomengNeural","name":"晓梦 (女) 甜美可爱"},
+    {"id":"zh-CN-XiaomoNeural","name":"晓墨 (女) 文艺清新"},
+    {"id":"zh-CN-XiaoqiuNeural","name":"晓秋 (女) 成熟稳重"},
+    {"id":"zh-CN-XiaoruiNeural","name":"晓睿 (女) 专业播报"},
+    {"id":"zh-CN-XiaoshuangNeural","name":"晓双 (女) 童声"},
+    {"id":"zh-CN-XiaoyanNeural","name":"晓颜 (女) 活力四射"},
+    {"id":"zh-CN-XiaozhenNeural","name":"晓甄 (女) 端庄大方"}
+  ],
+  "xiaomi":[
+    {"id":"冰糖","name":"冰糖 (女) 清甜明亮"},
+    {"id":"茉莉","name":"茉莉 (女) 温柔细腻"},
+    {"id":"Mia","name":"Mia (女) 优雅知性"},
+    {"id":"Chloe","name":"Chloe (女) 甜美温柔"},
+    {"id":"苏打","name":"苏打 (男) 清爽自然"},
+    {"id":"Milo","name":"Milo (男) 温暖磁性"},
+    {"id":"白桦","name":"白桦 (男) 沉稳厚重"},
+    {"id":"Dean","name":"Dean (男) 浑厚低沉"}
+  ]
+};
+
+function onTTSProviderChange(){
+  var provider=document.getElementById('ttsProvider').value;
+  var xiaomiGroup=document.getElementById('xiaomiApiKeyGroup');
+  xiaomiGroup.style.display=provider==='xiaomi'?'block':'none';
+  updateVoiceOptions(provider);
+}
+function updateVoiceOptions(provider){
+  var voices=TTS_VOICES[provider]||[];
+  var sel=document.getElementById('ttsVoice');
+  sel.innerHTML='';
+  voices.forEach(function(v){
+    sel.innerHTML+='<option value="'+v.id+'">'+v.name+'</option>';
+  });
+}
+async function loadTTSSettings(){
+  var d=await api('/api/tts/settings');if(!d||!d.success)return;
+  var s=d.settings;
+  var provider=s.tts_provider||'edge';
+  if(document.getElementById('ttsProvider'))document.getElementById('ttsProvider').value=provider;
+  if(document.getElementById('xiaomiApiKey'))document.getElementById('xiaomiApiKey').value=s.xiaomi_api_key||'';
+  // 更新音色选项
+  updateVoiceOptions(provider);
+  // 设置当前音色
+  var currentVoice=s.tts_voice;
+  if(provider==='xiaomi')currentVoice=s.xiaomi_voice||'Chloe';
+  if(document.getElementById('ttsVoice'))document.getElementById('ttsVoice').value=currentVoice;
+  if(document.getElementById('ttsRate'))document.getElementById('ttsRate').value=s.tts_rate||'+0%';
+  // 显示/隐藏小米API Key
+  document.getElementById('xiaomiApiKeyGroup').style.display=provider==='xiaomi'?'block':'none';
+}
+async function saveTTSSettings(){
+  var provider=document.getElementById('ttsProvider').value;
+  var d={
+    tts_provider:provider,
+    tts_rate:document.getElementById('ttsRate').value
+  };
+  if(provider==='xiaomi'){
+    d.xiaomi_api_key=document.getElementById('xiaomiApiKey').value;
+    d.xiaomi_voice=document.getElementById('ttsVoice').value;
+    d.tts_voice='Chloe'; // 默认值
+  }else{
+    d.tts_voice=document.getElementById('ttsVoice').value;
+    d.xiaomi_api_key='';
+    d.xiaomi_voice='Chloe';
+  }
+  var r=await api('/api/tts/settings','POST',d);
+  toast(r&&r.success?'TTS设置已保存':'保存失败',!(r&&r.success));
+}
+async function previewTTS(){
+  try {
+    var text=document.getElementById('ttsPreviewText').value;
+    var voice=document.getElementById('ttsVoice').value;
+    if(!text){toast('请输入试听文本',true);return}
+    toast('正在生成语音...');
+    var r=await api('/api/tts/preview','POST',{text:text,voice:voice});
+    if(r&&r.success){
+      var audio=new Audio(r.url);
+      audio.play().then(function(){toast('正在播放试听')}).catch(function(e){toast('播放失败: '+e.message,true)});
+    }else{
+      toast('TTS生成失败: '+(r?r.error:'网络错误'),true);
+    }
+  } catch(e) {
+    toast('TTS试听失败: '+e.message, true);
+  }
+}
+async function saveXiaomiApiKey(){
+  var apiKey=document.getElementById('xiaomiApiKey').value;
+  if(!apiKey){toast('请输入API Key',true);return}
+  var r=await api('/api/tts/settings','POST',{xiaomi_api_key:apiKey});
+  toast(r&&r.success?'API Key已保存':'保存失败',!(r&&r.success));
+}
+async function testXiaomiApiKey(){
+  var apiKey=document.getElementById('xiaomiApiKey').value;
+  if(!apiKey){toast('请先输入API Key',true);return}
+  // 先保存
+  await api('/api/tts/settings','POST',{xiaomi_api_key:apiKey});
+  toast('正在检测API Key...');
+  var r=await api('/api/tts/test_xiaomi','POST',{});
+  if(r&&r.success){
+    toast('API Key有效，连接成功！');
+  }else{
+    toast('检测失败: '+(r?r.error:'网络错误'),true);
+  }
+}
+
+// ===== 首页广播 =====
+var BROADCAST_ZONES=[]; // 选中的广播区域
+
+function initBroadcastZones(){
+  var container=document.getElementById('broadcastZones');
+  if(!container)return;
+  var h='';
+  ZONES.forEach(function(z){
+    h+='<label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">';
+    h+='<input type="checkbox" value="'+z.id+'" class="broadcastZoneCk"> '+z.name;
+    h+='</label>';
+  });
+  container.innerHTML=h;
+}
+function broadcastSelectAll(){
+  document.querySelectorAll('.broadcastZoneCk').forEach(function(cb){cb.checked=true});
+}
+function broadcastClearAll(){
+  document.querySelectorAll('.broadcastZoneCk').forEach(function(cb){cb.checked=false});
+}
+function setBroadcastText(text){
+  document.getElementById('broadcastText').value=text;
+}
+async function startBroadcast(){
+  var text=document.getElementById('broadcastText').value.trim();
+  var zoneIds=[];
+  document.querySelectorAll('.broadcastZoneCk:checked').forEach(function(cb){zoneIds.push(cb.value)});
+  
+  if(!text){toast('请输入广播内容',true);return}
+  if(zoneIds.length===0){toast('请选择广播区域',true);return}
+  
+  // 确认广播
+  if(!confirm('确认广播到 '+zoneIds.length+' 个区域？\n\n内容: '+text))return;
+  
+  // 更新状态
+  var btn=document.getElementById('broadcastBtn');
+  var status=document.getElementById('broadcastStatus');
+  btn.disabled=true;
+  btn.textContent='广播中...';
+  status.className='tag tag-orange';
+  status.textContent='广播中...';
+  
+  // 发送广播请求
+  var r=await api('/api/broadcast','POST',{text:text,zone_ids:zoneIds});
+  
+  if(r&&r.success){
+    toast(r.message);
+    document.getElementById('broadcastText').value='';
+    // 轮询检查广播状态
+    checkBroadcastStatus();
+  }else{
+    toast('广播失败: '+(r?r.error:'网络错误'),true);
+    btn.disabled=false;
+    btn.textContent='立即广播';
+    status.className='tag tag-green';
+    status.textContent='就绪';
+  }
+}
+function checkBroadcastStatus(){
+  // 简单延迟后恢复状态
+  setTimeout(function(){
+    var btn=document.getElementById('broadcastBtn');
+    var status=document.getElementById('broadcastStatus');
+    if(btn&&status){
+      btn.disabled=false;
+      btn.textContent='立即广播';
+      status.className='tag tag-green';
+      status.textContent='就绪';
+    }
+  },5000); // 5秒后恢复（实际应该根据广播长度动态调整）
+}
+async function stopBroadcast(){
+  var r=await api('/api/broadcast/stop','POST',{});
+  toast(r&&r.success?'已停止广播':'停止失败',!(r&&r.success));
+}
+
 // ===== 日志 =====
 async function loadLogs(){var cat=document.getElementById('logCat').value;var d=await api('/api/logs?per_page=50'+(cat?'&category='+cat:''));if(!d||!d.success)return;var h='';d.logs.forEach(function(l){h+='<tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">'+l.timestamp.slice(0,19)+'</td><td><span class="tag '+(l.level==='ERROR'?'tag-red':'tag-blue')+'">'+l.level+'</span></td><td><span class="tag tag-blue">'+l.category+'</span></td><td>'+l.message+'</td></tr>'});document.getElementById('logTbody').innerHTML=h||'<tr><td colspan="4" style="text-align:center;color:var(--text-quaternary)">暂无日志</td></tr>'}
 
 // ===== 初始化 =====
-initZones().then(function(){loadBellsForEditor()}).then(function(){loadDashboard()});
+initZones().then(function(){
+  loadBellsForEditor();
+  initBroadcastZones(); // 初始化广播区域选择
+  loadTTSSettings(); // 加载TTS设置
+}).then(function(){loadDashboard()});
 setInterval(function(){initZones().then(function(){loadDashboard()})},30000);
 </script>
 </body>

@@ -8,7 +8,11 @@ logs/
 data/
 backups/
 static/sounds/*.mp3
+static/sounds/*.wav
+static/tts_cache/
 .DS_Store
 thumbs.db
 VoicemeeterInstall/
 VoicemeeterSetup.zip
+*.lnk
+*.log

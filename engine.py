@@ -421,6 +421,17 @@ class AudioPlayer:
             self._jobs.pop(zone_id, None)
         self.zone_playing[zone_id] = False
 
+    def play_sequence(self, zone_id, filepaths, volume=1.0):
+        """顺序播放多个音频文件（用于组合铃声）"""
+        for filepath in filepaths:
+            if self.global_paused or self.zone_paused.get(zone_id, False):
+                return False
+            if not os.path.exists(filepath):
+                logger.warning(f"组合铃声文件不存在，跳过: {filepath}")
+                continue
+            self.play(zone_id, filepath, volume, blocking=True)
+        return True
+
     def stop_all(self):
         with self._lock:
             self._jobs.clear()
@@ -675,6 +686,7 @@ class BellEngine:
         self.holiday = HolidayChecker()
         self._bell_callbacks = []  # 打铃回调
         self._missed_bells = []    # 错过的打铃记录
+        self._broadcasting = set()  # 正在广播的区域ID
 
     def on_bell(self, callback):
         """注册打铃回调"""
@@ -709,6 +721,10 @@ class BellEngine:
 
             # 跳过全局暂停的区域
             if self.player.is_paused(zone_id):
+                continue
+            
+            # 跳过正在广播的区域（广播优先级最高）
+            if self.is_broadcasting(zone_id):
                 continue
 
             # 1. 检查今日例外（按区域）
@@ -749,10 +765,29 @@ class BellEngine:
                 # 5. 播放前自检铃声文件
                 # 优先使用任务绑定的具体铃声文件
                 bell_file = None
-                if task["bell_id"]:
-                    # 如果任务有关联的铃声文件，直接使用
-                    row = conn.execute("SELECT filename FROM bells WHERE id=?", (task["bell_id"],)).fetchone()
+                bell_type = task["bell_type"]
+                bell_info = None
+                
+                # 预约铃声拦截：检查task_overrides表
+                override = conn.execute(
+                    "SELECT * FROM task_overrides WHERE task_id=? AND ? BETWEEN start_date AND end_date",
+                    (task["id"], today_str)
+                ).fetchone()
+                if override:
+                    # 有预约，使用预约铃声
+                    row = conn.execute("SELECT * FROM bells WHERE id=?", (override["bell_id"],)).fetchone()
                     if row:
+                        bell_info = dict(row)
+                        bell_type = row["bell_type"]
+                        bell_file = os.path.join("static", "sounds", row["filename"])
+                        logger.info(f"预约铃声生效: 任务{task['id']} → {row['name']}")
+                
+                if task["bell_id"] and not bell_file:
+                    # 如果任务有关联的铃声文件，直接使用
+                    row = conn.execute("SELECT * FROM bells WHERE id=?", (task["bell_id"],)).fetchone()
+                    if row:
+                        bell_info = dict(row)
+                        bell_type = row["bell_type"]
                         bell_file = os.path.join("static", "sounds", row["filename"])
                 
                 # 如果没有bell_id或查找失败，使用bell_type查找
@@ -761,7 +796,31 @@ class BellEngine:
                 if not bell_file:
                     bell_file = self._get_default_bell(task["bell_type"])
 
-                if bell_file and os.path.exists(bell_file):
+                # 组合铃声处理
+                if bell_type == "combo" and bell_info:
+                    try:
+                        combo_data = json.loads(bell_info["filename"])
+                        filepaths = []
+                        for f in combo_data.get("items", []):
+                            if f.startswith("tts_cache:"):
+                                # TTS文件在tts_cache目录
+                                filepaths.append(os.path.join("static", "tts_cache", f[10:]))
+                            else:
+                                # 普通铃声在sounds目录
+                                filepaths.append(os.path.join("static", "sounds", f))
+                        volume = self.player.zone_volumes.get(zone_id, zone["volume"])
+                        threading.Thread(
+                            target=self.player.play_sequence,
+                            args=(zone_id, filepaths, volume),
+                            daemon=True
+                        ).start()
+                        logger.info(f"🔔 组合打铃: {zone['name']}({zone_id}) {task['task_name']} {current_time}")
+                        self._notify_bell(zone_id, "combo", task["task_name"], current_time)
+                        from models import add_log
+                        add_log("INFO", "bell", f"组合打铃: {zone['name']} {task['task_name']}", bell_info["name"])
+                    except Exception as e:
+                        logger.error(f"组合铃声解析失败: {e}")
+                elif bell_file and os.path.exists(bell_file):
                     volume = self.player.zone_volumes.get(zone_id, zone["volume"])
                     threading.Thread(
                         target=self.player.play,
@@ -860,6 +919,81 @@ class BellEngine:
             add_log("INFO", "manual", f"手动打铃: 区域{zone_id} {bell_type}")
             return True
         return False
+
+    def broadcast(self, zone_ids, tts_path):
+        """
+        实时广播 - 最高优先级，打断当前播放
+        
+        Args:
+            zone_ids: 区域ID列表
+            tts_path: TTS音频文件路径
+        
+        Returns:
+            bool: 是否成功
+        """
+        if not tts_path or not os.path.exists(tts_path):
+            logger.error(f"广播失败: TTS文件不存在 {tts_path}")
+            return False
+        
+        try:
+            for zone_id in zone_ids:
+                # 1. 打断当前播放
+                self.player.stop_zone(zone_id)
+                
+                # 2. 标记为广播中
+                self._broadcasting.add(zone_id)
+                
+                # 3. 播放广播（新线程）
+                volume = self.player.zone_volumes.get(zone_id, 0.8)
+                threading.Thread(
+                    target=self._play_broadcast,
+                    args=(zone_id, tts_path, volume),
+                    daemon=True
+                ).start()
+                
+                logger.info(f"广播开始: 区域{zone_id}")
+            
+            from models import add_log
+            add_log("INFO", "broadcast", f"实时广播: {len(zone_ids)}个区域")
+            return True
+            
+        except Exception as e:
+            logger.error(f"广播异常: {e}")
+            return False
+
+    def _play_broadcast(self, zone_id, tts_path, volume):
+        """播放广播并清理"""
+        try:
+            # 播放（blocking=True等待播放完成）
+            self.player.play(zone_id, tts_path, volume, blocking=True)
+        except Exception as e:
+            logger.error(f"广播播放异常: {e}")
+        finally:
+            # 解除广播标记
+            self._broadcasting.discard(zone_id)
+            logger.debug(f"广播结束: 区域{zone_id}")
+
+    def stop_broadcast(self, zone_id=None):
+        """
+        停止广播
+        
+        Args:
+            zone_id: 区域ID，None则停止所有
+        """
+        if zone_id:
+            self.player.stop_zone(zone_id)
+            self._broadcasting.discard(zone_id)
+            logger.info(f"停止广播: 区域{zone_id}")
+        else:
+            # 停止所有广播区域
+            for zid in list(self._broadcasting):
+                self.player.stop_zone(zid)
+            self._broadcasting.clear()
+            logger.info("停止所有广播")
+
+    def is_broadcasting(self, zone_id):
+        """检查区域是否正在广播"""
+        return zone_id in self._broadcasting
 
     def get_next_bell(self):
         """获取各区域的下次打铃时间，按时间排序"""
