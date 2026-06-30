@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钢城智慧铃声 - StreamEx 完整版</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F1F5F9; font-family: 'Inter', sans-serif; }
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); }
+        .gradient-blue { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+        .gradient-orange { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); }
+        .gradient-green { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+        .soft-shadow { box-shadow: 0 12px 36px rgba(148, 163, 184, 0.1); }
+        .nav-item.active { background: #EFF6FF; color: #2563EB; font-weight: 600; }
+        .nav-item.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 20px; background: #2563EB; border-radius: 0 4px 4px 0; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        
+        /* 自定义开关样式 */
+        .toggle-checkbox:checked { right: 0; border-color: #3B82F6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3B82F6; }
+        .toggle-checkbox { right: 4px; z-index: 1; transition: all 0.3s; }
+        .toggle-label { width: 44px; height: 24px; background-color: #E2E8F0; border-radius: 9999px; transition: all 0.3s; }
+    </style>
+</head>
+<body class="h-screen w-screen p-4 lg:p-6 overflow-hidden flex items-center justify-center">
+
+<div id="app" class="w-full h-full max-w-[1600px] flex rounded-[32px] bg-slate-50 soft-shadow border border-slate-200 overflow-hidden relative">
+    
+    <!-- 左侧边栏 -->
+    <aside class="w-64 bg-white flex flex-col border-r border-slate-100 flex-shrink-0 z-20 shadow-sm">
+        <div class="h-20 flex items-center px-6 gap-3 border-b border-slate-50">
+            <div class="w-10 h-10 rounded-xl gradient-blue flex items-center justify-center shadow-lg shadow-blue-500/30 text-white font-bold text-xl">GC</div>
+            <div>
+                <h1 class="font-bold text-slate-800 tracking-tight leading-tight text-sm">钢城智慧铃声</h1>
+                <p class="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Smart Bell</p>
+            </div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-6">
+            <div v-for="(group, idx) in navGroups" :key="idx">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-3">{{ group.label }}</div>
+                <div class="space-y-1">
+                    <button v-for="item in group.items" :key="item.id" @click="currentPage = item.id"
+                            :class="['w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors relative', currentPage === item.id ? 'active' : 'text-slate-500 hover:bg-slate-50']">
+                        <span class="text-lg opacity-80" v-html="item.icon"></span>
+                        {{ item.name }}
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- 右侧主内容区 -->
+    <main class="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
+        <!-- 顶部 Header -->
+        <header class="h-20 px-8 flex items-center justify-between border-b border-slate-200 glass-panel z-10 sticky top-0">
+            <h2 class="text-xl font-bold text-slate-800 tracking-tight">{{ currentTitle }}</h2>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-600 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    NTP 偏差 <span class="text-emerald-500 font-mono">+0.003s</span>
+                </div>
+                <div class="text-right">
+                    <div class="text-lg font-bold text-slate-800 font-mono leading-none tracking-tight">{{ timeString }}</div>
+                </div>
+                <div class="w-px h-8 bg-slate-200"></div>
+                <div class="flex items-center gap-3 cursor-pointer group">
+                    <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border-2 border-white shadow-sm">A</div>
+                    <div class="text-sm font-semibold text-slate-700">Admin</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 页面视图区域 (带平滑滚动) -->
+        <div class="flex-1 overflow-y-auto p-8 scroll-smooth">
+            
+            <!-- 1. Dashboard 占位 (复用之前设计，这里简略展示，重点展示内部页) -->
+            <div v-show="currentPage === 'dashboard'" class="animate-fade-in flex flex-col items-center justify-center h-full text-slate-400">
+                <span class="text-5xl mb-4">◱</span>
+                <p>总览页面已在上一版本详细展示</p>
+            </div>
+
+            <!-- 2. 排课管理 (Schedules) -->
+            <div v-show="currentPage === 'schedules'" class="animate-fade-in space-y-6">
+                <div class="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 soft-shadow">
+                    <div class="flex items-center gap-4">
+                        <select class="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold outline-none focus:border-blue-500 min-w-[160px]">
+                            <option>教学楼</option>
+                            <option>操场</option>
+                        </select>
+                        <select class="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold outline-none focus:border-blue-500 min-w-[200px]">
+                            <option>平日课表 [默认]</option>
+                            <option>考试课表</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition">设为默认</button>
+                        <button class="px-4 py-2 gradient-blue text-white text-sm font-semibold rounded-xl shadow-md transition hover:opacity-90">+ 添加打铃任务</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl border border-slate-100 soft-shadow overflow-hidden p-2">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="py-4 px-6 border-b border-slate-100">执行时间</th>
+                                <th class="py-4 px-6 border-b border-slate-100">任务名称</th>
+                                <th class="py-4 px-6 border-b border-slate-100">铃声类型</th>
+                                <th class="py-4 px-6 border-b border-slate-100">适用周期</th>
+                                <th class="py-4 px-6 border-b border-slate-100 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(task, i) in scheduleTasks" :key="i" class="hover:bg-slate-50 transition-colors group">
+                                <td class="py-4 px-6 border-b border-slate-50 font-mono text-lg font-bold text-slate-800">{{ task.time }}</td>
+                                <td class="py-4 px-6 border-b border-slate-50 text-sm font-semibold text-slate-700">{{ task.name }}</td>
+                                <td class="py-4 px-6 border-b border-slate-50">
+                                    <span class="px-2.5 py-1 rounded-md text-xs font-bold" :class="task.typeClass">{{ task.type }}</span>
+                                </td>
+                                <td class="py-4 px-6 border-b border-slate-50 text-xs text-slate-500">{{ task.days }}</td>
+                                <td class="py-4 px-6 border-b border-slate-50 text-right space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold">编辑</button>
+                                    <button class="px-3 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-semibold">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. 区域控制 (Zones) -->
+            <div v-show="currentPage === 'zones'" class="animate-fade-in space-y-6">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg">硬件区域管理</h3>
+                        <p class="text-xs text-slate-400">配置每个区域的音频设备与物理音量</p>
+                    </div>
+                    <button class="px-5 py-2 gradient-blue text-white text-sm font-semibold rounded-xl shadow-md">+ 新增广播区域</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div v-for="(zone, i) in zonesData" :key="i" class="bg-white p-6 rounded-3xl border border-slate-100 soft-shadow relative overflow-hidden flex flex-col justify-between">
+                        <!-- 顶条颜色标识 -->
+                        <div class="absolute top-0 left-0 w-full h-1" :class="zone.color"></div>
+                        
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h4 class="text-xl font-bold text-slate-800">{{ zone.name }}</h4>
+                                <span class="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold mt-1 inline-block">服务在线</span>
+                            </div>
+                            <!-- 开关 -->
+                            <div class="relative inline-block w-11 mr-2 align-middle select-none">
+                                <input type="checkbox" checked class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer mt-0.5 ml-0.5"/>
+                                <label class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 flex-1">
+                            <div>
+                                <label class="flex justify-between text-xs font-semibold text-slate-500 mb-1">
+                                    <span>输出音量</span>
+                                    <span class="text-slate-800">{{ zone.volume }}%</span>
+                                </label>
+                                <input type="range" min="0" max="100" :value="zone.volume" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold text-slate-500 block mb-1">音频设备 (硬件)</label>
+                                <select class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm outline-none text-slate-700">
+                                    <option>{{ zone.device }}</option>
+                                    <option>默认系统输出</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 pt-4 border-t border-slate-100 flex gap-2">
+                            <button class="flex-1 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl transition">暂停此区</button>
+                            <button class="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-xl transition">测试打铃</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 铃声管理 (Bells) -->
+            <div v-show="currentPage === 'bells'" class="animate-fade-in space-y-6">
+                <div class="grid grid-cols-3 gap-6">
+                    <!-- 左侧：媒体库 -->
+                    <div class="col-span-2 bg-white rounded-3xl p-6 border border-slate-100 soft-shadow">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-slate-800">媒体库</h3>
+                            <div class="flex gap-2">
+                                <button class="px-4 py-2 bg-slate-50 text-slate-600 text-xs font-bold rounded-xl">管理提示音</button>
+                                <button class="px-4 py-2 gradient-blue text-white text-xs font-bold rounded-xl shadow-sm">+ 上传音频</button>
+                            </div>
+                        </div>
+                        <div class="overflow-hidden">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="text-xs font-bold text-slate-400 uppercase border-b border-slate-100">
+                                        <th class="py-3">铃声名称</th>
+                                        <th class="py-3">类型</th>
+                                        <th class="py-3 font-mono">文件源</th>
+                                        <th class="py-3 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(bell, i) in bellLibrary" :key="i" class="border-b border-slate-50 hover:bg-slate-50">
+                                        <td class="py-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                            {{ bell.name }}
+                                            <span v-if="bell.isDefault" class="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-[10px] rounded">默认</span>
+                                        </td>
+                                        <td class="py-3 text-xs"><span class="px-2 py-1 bg-orange-50 text-orange-600 rounded-md font-bold">{{ bell.type }}</span></td>
+                                        <td class="py-3 text-xs font-mono text-slate-500">{{ bell.file }}</td>
+                                        <td class="py-3 text-right space-x-1">
+                                            <button class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">试听</button>
+                                            <button class="px-2 py-1 bg-red-50 text-red-600 rounded text-xs">删除</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：区域绑定矩阵预览 -->
+                    <div class="col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-6 text-white soft-shadow">
+                        <h3 class="font-bold text-white mb-1">区域独立铃声绑定</h3>
+                        <p class="text-xs text-slate-400 mb-6">特定区域偏好设置</p>
+                        
+                        <div class="space-y-4">
+                            <div class="bg-white/10 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
+                                <div class="text-xs font-bold text-slate-300 mb-2">教学楼</div>
+                                <div class="flex justify-between text-xs items-center border-b border-white/5 pb-1 mb-1">
+                                    <span class="text-slate-400">上课铃</span>
+                                    <span class="font-medium text-blue-300">class_start.wav</span>
+                                </div>
+                                <div class="flex justify-between text-xs items-center">
+                                    <span class="text-slate-400">下课铃</span>
+                                    <span class="font-medium">跟随系统</span>
+                                </div>
+                            </div>
+                            <button class="w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-semibold transition-colors">编辑绑定矩阵</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 节假日管理 (Holidays) -->
+            <div v-show="currentPage === 'holidays'" class="animate-fade-in space-y-6">
+                <div class="grid grid-cols-4 gap-6">
+                    <!-- 左侧：即将到来 -->
+                    <div class="col-span-1 space-y-4">
+                        <div class="bg-white p-5 rounded-3xl border border-slate-100 soft-shadow">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-slate-800">即将到来</h3>
+                                <button class="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></button>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="p-3 bg-red-50 rounded-xl border border-red-100 flex justify-between items-center">
+                                    <div>
+                                        <div class="text-sm font-bold text-red-600">建党节</div>
+                                        <div class="text-xs text-red-400 font-mono mt-0.5">2026-07-01</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-lg font-black text-red-500">1<span class="text-xs font-normal">天后</span></div>
+                                    </div>
+                                </div>
+                                <div class="p-3 bg-orange-50 rounded-xl border border-orange-100 flex justify-between items-center">
+                                    <div>
+                                        <div class="text-sm font-bold text-orange-600">建军节</div>
+                                        <div class="text-xs text-orange-400 font-mono mt-0.5">2026-08-01</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-lg font-black text-orange-500">32<span class="text-xs font-normal">天后</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：全年数据 -->
+                    <div class="col-span-3 bg-white rounded-3xl p-6 border border-slate-100 soft-shadow">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-slate-800">全年节假日策略 (2026)</h3>
+                            <button class="px-4 py-2 gradient-blue text-white text-xs font-bold rounded-xl">+ 手动添加</button>
+                        </div>
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-xs font-bold text-slate-400 uppercase border-b border-slate-100">
+                                    <th class="py-3">日期</th>
+                                    <th class="py-3">节日名称</th>
+                                    <th class="py-3">系统行为</th>
+                                    <th class="py-3">数据来源</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="h in holidaysList" class="border-b border-slate-50 hover:bg-slate-50">
+                                    <td class="py-3 text-sm font-mono font-bold text-slate-700">{{ h.date }} <span class="text-xs text-slate-400 ml-1">{{ h.day }}</span></td>
+                                    <td class="py-3 text-sm font-semibold text-slate-700">{{ h.name }}</td>
+                                    <td class="py-3 text-xs">
+                                        <span class="px-2 py-1 bg-red-50 text-red-600 rounded font-bold border border-red-100">🚫 放假不打铃</span>
+                                    </td>
+                                    <td class="py-3 text-xs text-slate-400">{{ h.source }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. 系统设置 (Settings) -->
+            <div v-show="currentPage === 'settings'" class="animate-fade-in space-y-6">
+                <div class="grid grid-cols-2 gap-6">
+                    <!-- 通用服务配置 -->
+                    <div class="bg-white p-6 rounded-3xl border border-slate-100 soft-shadow">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">⚙️</div>
+                            <h3 class="font-bold text-slate-800 text-lg">外部接口与校时</h3>
+                        </div>
+                        
+                        <div class="space-y-5">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 block mb-1">NTP 授时服务器</label>
+                                <input type="text" value="ntp.aliyun.com" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:border-blue-500">
+                                <p class="text-[10px] text-slate-400 mt-1">系统每日凌晨自动校时</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 block mb-1">节假日查询 API</label>
+                                <input type="text" value="https://timor.tech/api/holiday/year/{}" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-500 focus:outline-none">
+                            </div>
+                            <button class="w-full py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition">保存接口配置</button>
+                        </div>
+                    </div>
+
+                    <!-- 机器人与语音 -->
+                    <div class="bg-white p-6 rounded-3xl border border-slate-100 soft-shadow">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">🤖</div>
+                            <h3 class="font-bold text-slate-800 text-lg">自动化与 AI 服务</h3>
+                        </div>
+
+                        <div class="space-y-5">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs font-bold text-slate-500">钉钉群告警 Webhook</label>
+                                    <!-- 开关 -->
+                                    <div class="relative inline-block w-8 mr-1 align-middle select-none">
+                                        <input type="checkbox" checked class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-4 appearance-none cursor-pointer mt-0.5 ml-0.5"/>
+                                        <label class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer w-8"></label>
+                                    </div>
+                                </div>
+                                <input type="password" value="https://oapi.dingtalk.com/robot/..." class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:border-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 block mb-1">TTS 播报引擎 (用于快速广播)</label>
+                                <select class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:border-blue-500">
+                                    <option>Edge TTS (微软免费源) - 默认</option>
+                                    <option>阿里云语音合成 (需 Key)</option>
+                                </select>
+                            </div>
+
+                            <button class="w-full py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition">应用更改</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. 运行日志 (Logs) -->
+            <div v-show="currentPage === 'logs'" class="animate-fade-in bg-white rounded-3xl p-6 border border-slate-100 soft-shadow flex flex-col h-full max-h-[700px]">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-slate-800 text-lg">系统运行日志</h3>
+                    <div class="flex gap-3">
+                        <select class="px-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 outline-none">
+                            <option>全部分类</option>
+                            <option>打铃任务</option>
+                            <option>系统底层</option>
+                        </select>
+                        <button class="px-4 py-1.5 bg-slate-100 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-200">刷新</button>
+                    </div>
+                </div>
+                
+                <div class="flex-1 overflow-auto bg-slate-50 rounded-2xl border border-slate-100 p-2">
+                    <table class="w-full text-left">
+                        <tbody>
+                            <tr v-for="(log, i) in sysLogs" :key="i" class="border-b border-slate-200/50 hover:bg-white transition-colors">
+                                <td class="py-2.5 px-4 text-xs font-mono text-slate-400 whitespace-nowrap">{{ log.time }}</td>
+                                <td class="py-2.5 px-4 w-20">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" 
+                                          :class="log.level === 'INFO' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'">
+                                        {{ log.level }}
+                                    </span>
+                                </td>
+                                <td class="py-2.5 px-4 w-24">
+                                    <span class="text-xs font-semibold text-slate-500">{{ log.category }}</span>
+                                </td>
+                                <td class="py-2.5 px-4 text-sm text-slate-700 font-medium">{{ log.msg }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+    createApp({
+        setup() {
+            // 导航
+            const navGroups = [
+                {
+                    label: 'Overview',
+                    items: [{ id: 'dashboard', name: '系统总览', icon: '◱' }]
+                },
+                {
+                    label: 'Management',
+                    items: [
+                        { id: 'schedules', name: '排课管理', icon: '📅' },
+                        { id: 'zones', name: '区域控制', icon: '🎛️' },
+                        { id: 'bells', name: '铃声管理', icon: '🎵' }
+                    ]
+                },
+                {
+                    label: 'Configuration',
+                    items: [
+                        { id: 'holidays', name: '节假日策略', icon: '🏖️' },
+                        { id: 'settings', name: '系统设置', icon: '🔧' }
+                    ]
+                },
+                {
+                    label: 'System',
+                    items: [
+                        { id: 'logs', name: '运行日志', icon: '📋' }
+                    ]
+                }
+            ];
+
+            const currentPage = ref('schedules'); // 默认展示排课，方便你直接看到效果
+            const currentTitle = computed(() => {
+                for(let g of navGroups) {
+                    const item = g.items.find(i => i.id === currentPage.value);
+                    if (item) return item.name;
+                }
+                return 'System';
+            });
+
+            // 假数据 - 排课
+            const scheduleTasks = ref([
+                { time: '07:50', name: '预备铃', type: '预备铃', typeClass: 'bg-orange-50 text-orange-600', days: '周一至周五' },
+                { time: '08:00', name: '第一节课上课', type: '上课铃', typeClass: 'bg-blue-50 text-blue-600', days: '周一至周五' },
+                { time: '08:45', name: '第一节课下课', type: '下课铃', typeClass: 'bg-slate-100 text-slate-600', days: '周一至周五' },
+                { time: '09:50', name: '课间操', type: '组合铃声', typeClass: 'bg-emerald-50 text-emerald-600', days: '周一至周五' },
+                { time: '17:30', name: '放学铃', type: '放学铃', typeClass: 'bg-orange-50 text-orange-600', days: '周一至周五' }
+            ]);
+
+            // 假数据 - 区域
+            const zonesData = ref([
+                { name: '教学主楼', volume: 80, device: '音箱 (WDM-KS 直连)', color: 'bg-blue-500' },
+                { name: '操场跑道', volume: 100, device: '默认系统输出', color: 'bg-orange-500' },
+                { name: '学生宿舍楼', volume: 60, device: '网络解码终端', color: 'bg-emerald-500' }
+            ]);
+
+            // 假数据 - 铃声库
+            const bellLibrary = ref([
+                { name: '标准上课铃', type: '上课铃', file: 'class_start.wav', isDefault: true },
+                { name: '舒缓下课铃', type: '下课铃', file: 'class_end.wav', isDefault: true },
+                { name: '眼保健操(完整版)', type: '组合铃声', file: 'eye_care_mix.mp3', isDefault: false },
+                { name: '防空防灾演练警报', type: '紧急铃', file: 'alarm_danger.wav', isDefault: false }
+            ]);
+
+            // 假数据 - 节假日
+            const holidaysList = ref([
+                { date: '2026-01-01', day: '周四', name: '元旦节', source: '官方 API' },
+                { date: '2026-01-29', day: '周三', name: '春节', source: '官方 API' },
+                { date: '2026-04-05', day: '周六', name: '清明节', source: '官方 API' },
+                { date: '2026-05-01', day: '周四', name: '劳动节', source: '官方 API' }
+            ]);
+
+            // 假数据 - 日志
+            const sysLogs = ref([
+                { time: '2026-06-30 08:00:00', level: 'INFO', category: 'bell', msg: '自动打铃触发: 教学楼 [第一节课上课]' },
+                { time: '2026-06-30 07:50:00', level: 'INFO', category: 'bell', msg: '自动打铃触发: 教学楼 [预备铃]' },
+                { time: '2026-06-30 06:00:02', level: 'INFO', category: 'ntp', msg: '每日自动网络校时完成，当前偏差 +0.003秒' },
+                { time: '2026-06-29 14:22:10', level: 'WARN', category: 'manual', msg: 'Admin 触发了全局停止操作 (紧急打断)' },
+                { time: '2026-06-29 10:00:00', level: 'INFO', category: 'system', msg: '节假日配置同步成功' }
+            ]);
+
+            // 时钟
+            const timeString = ref('');
+            let timer = null;
+            const updateClock = () => {
+                timeString.value = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            };
+
+            onMounted(() => {
+                updateClock();
+                timer = setInterval(updateClock, 1000);
+            });
+            onUnmounted(() => { if (timer) clearInterval(timer); });
+
+            return {
+                navGroups, currentPage, currentTitle, timeString,
+                scheduleTasks, zonesData, bellLibrary, holidaysList, sysLogs
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

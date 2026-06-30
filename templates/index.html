@@ -204,6 +204,10 @@ tbody tr:hover{background:var(--primary-light)}
       <div class="ntp-badge" id="ntpBadge" title="NTP校时状态"><span class="dot"></span>未同步</div>
       <span class="header-date" id="dateDisplay"></span>
       <span class="header-time" id="clock">--:--:--</span>
+      <div id="userInfo" style="display:none;margin-left:12px;padding-left:12px;border-left:1px solid var(--border)">
+        <span id="userDisplay" style="font-size:13px;color:var(--text-secondary)"></span>
+        <button class="btn btn-sm btn-ghost" onclick="logout()" style="margin-left:6px;font-size:12px">退出</button>
+      </div>
     </div>
   </header>
   <main class="content">
@@ -1028,6 +1032,10 @@ function updateBellNameMap(){
 function loadBellsForEditor(){
   return api('/api/bells').then(function(d){
     if(d&&d.success){BELLS=d.bells;updateBellNameMap()}
+  }).then(function(){
+    return api('/api/bells/default').then(function(d){
+      if(d&&d.success)DEFAULT_BELL_ID=d.default_bell_id;
+    });
   });
 }
 
@@ -1080,7 +1088,13 @@ function openTaskModal(taskId){
     document.getElementById('taskId').value='';
     document.getElementById('taskZone').value=ZONES.length>0?ZONES[0].id:'A';
     document.getElementById('taskTime').value='08:00';
-    document.getElementById('taskBellType').value=BELLS.length>0?BELLS[0].id:'';
+    // 默认选中默认铃声
+    var defaultBellId=DEFAULT_BELL_ID||0;
+    if(defaultBellId&&BELLS.find(function(b){return b.id===defaultBellId})){
+      document.getElementById('taskBellType').value=defaultBellId;
+    }else{
+      document.getElementById('taskBellType').value=BELLS.length>0?BELLS[0].id:'';
+    }
     document.getElementById('taskName').value='';
     selectWorkdays();
     document.getElementById('taskOneTime').value='';
@@ -1093,7 +1107,7 @@ function selectAllDays(){
   document.querySelectorAll('.taskDays').forEach(function(cb){cb.checked=true});
 }
 function selectWorkdays(){
-  document.querySelectorAll('.taskDays').forEach(function(cb){cb.checked=['1','2','3','4','5'].includes(cb.value)});
+  document.querySelectorAll('.taskDays').forEach(function(cb){cb.checked=['1','2','3','4','5','6','7'].includes(cb.value)});
 }
 function selectWeekend(){
   document.querySelectorAll('.taskDays').forEach(function(cb){cb.checked=['6','7'].includes(cb.value)});
@@ -1292,11 +1306,17 @@ async function saveZone(zid){
 // ===== 铃声 =====
 var _bellBindings={}; // 缓存绑定信息
 var ALL_BELLS=[]; // 缓存所有铃声
+var DEFAULT_BELL_ID=0; // 默认铃声ID
 
 async function loadBells(){
   var d=await api('/api/bells');
   if(!d||!d.success)return;
   ALL_BELLS=d.bells;
+  
+  // 获取默认铃声ID
+  var defaultRes=await api('/api/bells/default');
+  var defaultBellId=defaultRes&&defaultRes.success?defaultRes.default_bell_id:0;
+  
   var h='';
   d.bells.forEach(function(b,idx){
     var typeName=BT[b.bell_type]||b.bell_type;
@@ -1306,13 +1326,15 @@ async function loadBells(){
     if(b.bell_type==='combo'){
       try{var combo=JSON.parse(b.filename);displayFile='组合('+combo.items.length+'个)'}catch(e){}
     }
-    h+='<tr>';
-    h+='<td><strong>'+b.name+'</strong></td>';
+    var isDefault=(b.id===defaultBellId);
+    h+='<tr'+(isDefault?' style="background:var(--primary-light)"':'')+'>';
+    h+='<td><strong>'+b.name+'</strong>'+(isDefault?' <span class="tag tag-blue">默认</span>':'')+'</td>';
     h+='<td><span class="tag '+(b.bell_type==='combo'?'tag-green':'tag-orange')+'">'+typeName+'</span></td>';
     h+='<td style="font-size:12px;color:var(--text-tertiary);font-family:var(--mono)">'+displayFile+'</td>';
     h+='<td><div class="flex gap-8">';
     h+='<button class="btn btn-primary btn-sm" onclick="playBell('+idx+')">试听</button>';
     h+='<button class="btn btn-outline btn-sm" onclick="stopBell()">停止</button>';
+    h+='<button class="btn '+(isDefault?'btn-success':'btn-outline')+' btn-sm" onclick="setDefaultBell('+b.id+')">设为默认</button>';
     h+='<button class="btn btn-danger btn-sm" onclick="deleteBell('+b.id+')">删除</button>';
     h+='</div></td>';
     h+='</tr>';
@@ -1367,6 +1389,15 @@ function stopBell(){
     currentAudio.pause();
     currentAudio.currentTime=0;
     currentAudio=null;
+  }
+}
+async function setDefaultBell(bellId){
+  var r=await api('/api/bells/default','POST',{bell_id:bellId});
+  if(r&&r.success){
+    toast('默认铃声已设置');
+    loadBells();
+  }else{
+    toast('设置失败',true);
   }
 }
 // 渲染铃声绑定矩阵
@@ -1686,6 +1717,12 @@ async function openOverrideDialog(){
   ZONES.forEach(function(z){
     zoneSel.innerHTML+='<option value="'+z.id+'">'+z.name+'</option>';
   });
+  // 根据当前用户权限默认选择区域
+  if(CURRENT_USER && CURRENT_USER.zone_scope && CURRENT_USER.zone_scope !== 'all'){
+    if(ZONES.length > 0){
+      zoneSel.value = ZONES[0].id;
+    }
+  }
   // 加载课表列表
   var d=await api('/api/schedules');
   if(d&&d.success){
@@ -1852,6 +1889,12 @@ async function loadSchedulesPage(){
   var zSel=document.getElementById('schedZone');
   zSel.innerHTML='<option value="">--选择--</option>';
   ZONES.forEach(function(z){zSel.innerHTML+='<option value="'+z.id+'">'+z.name+'</option>'});
+  // 根据当前用户权限默认选择区域
+  if(CURRENT_USER && CURRENT_USER.zone_scope && CURRENT_USER.zone_scope !== 'all'){
+    if(ZONES.length > 0){
+      zSel.value = ZONES[0].id;
+    }
+  }
   // 填充课表下拉
   var d=await api('/api/schedules');if(!d||!d.success)return;
   var ss=document.getElementById('schedSchedule');ss.innerHTML='<option value="0">默认课表</option>';
@@ -2109,10 +2152,27 @@ async function stopBroadcast(){
 async function loadLogs(){var cat=document.getElementById('logCat').value;var d=await api('/api/logs?per_page=50'+(cat?'&category='+cat:''));if(!d||!d.success)return;var h='';d.logs.forEach(function(l){h+='<tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">'+l.timestamp.slice(0,19)+'</td><td><span class="tag '+(l.level==='ERROR'?'tag-red':'tag-blue')+'">'+l.level+'</span></td><td><span class="tag tag-blue">'+l.category+'</span></td><td>'+l.message+'</td></tr>'});document.getElementById('logTbody').innerHTML=h||'<tr><td colspan="4" style="text-align:center;color:var(--text-quaternary)">暂无日志</td></tr>'}
 
 // ===== 初始化 =====
+var CURRENT_USER = null; // 当前用户信息
+
+async function loadUserInfo(){
+  try{
+    var d=await api('/api/user/info');
+    if(d&&d.success&&d.user){
+      CURRENT_USER = d.user;
+      document.getElementById('userDisplay').textContent=d.user.display_name+' ('+d.user.username+')';
+      document.getElementById('userInfo').style.display='flex';
+    }
+  }catch(e){}
+}
+function logout(){
+  document.cookie='auth_user=;max-age=0';
+  window.location.href='/';
+}
 initZones().then(function(){
   loadBellsForEditor();
-  initBroadcastZones(); // 初始化广播区域选择
-  loadTTSSettings(); // 加载TTS设置
+  initBroadcastZones();
+  loadTTSSettings();
+  loadUserInfo();
 }).then(function(){loadDashboard()});
 setInterval(function(){initZones().then(function(){loadDashboard()})},30000);
 </script>

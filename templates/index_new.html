@@ -1,1451 +1,428 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>校园智能广播管理系统</title>
-<style>
-/* ===== CSS Variables & Reset ===== */
-:root {
-  --primary: #1890ff;
-  --primary-dark: #096dd9;
-  --success: #52c41a;
-  --warning: #faad14;
-  --error: #ff4d4f;
-  --bg: #f0f2f5;
-  --card: #ffffff;
-  --border: #e8e8e8;
-  --text: #262626;
-  --text-secondary: #8c8c8c;
-  --shadow: 0 2px 8px rgba(0,0,0,0.08);
-  --shadow-hover: 0 4px 16px rgba(0,0,0,0.12);
-  --radius: 8px;
-  --header-height: 56px;
-  --sidebar-width: 220px;
-  --transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
-  display: flex;
-  min-height: 100vh;
-}
-
-/* ===== Sidebar ===== */
-.sidebar {
-  width: var(--sidebar-width);
-  background: linear-gradient(180deg, #001529 0%, #002140 100%);
-  color: white;
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 100;
-  transition: var(--transition);
-  overflow-y: auto;
-}
-
-.sidebar-header {
-  height: var(--header-height);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.sidebar-header .logo {
-  width: 32px;
-  height: 32px;
-  background: var(--primary);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 12px;
-  font-size: 20px;
-}
-
-.sidebar-nav {
-  padding: 12px 0;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  color: rgba(255,255,255,0.65);
-  cursor: pointer;
-  transition: var(--transition);
-  border-right: 3px solid transparent;
-  font-size: 14px;
-}
-
-.nav-item:hover {
-  color: white;
-  background: rgba(255,255,255,0.08);
-}
-
-.nav-item.active {
-  color: white;
-  background: var(--primary);
-  border-right-color: #ffffff;
-}
-
-.nav-item .icon {
-  width: 20px;
-  height: 20px;
-  margin-right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-
-/* ===== Main Content ===== */
-.main-wrapper {
-  flex: 1;
-  margin-left: var(--sidebar-width);
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-/* ===== Header ===== */
-.header {
-  height: var(--header-height);
-  background: white;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  position: sticky;
-  top: 0;
-  z-index: 99;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.header-title {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.header-time {
-  font-size: 13px;
-  color: var(--text-secondary);
-  font-family: "SF Mono", Consolas, monospace;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 6px;
-}
-
-.status-dot.online { background: var(--success); box-shadow: 0 0 8px rgba(82, 196, 26, 0.4); }
-.status-dot.offline { background: var(--error); }
-.status-dot.warning { background: var(--warning); }
-
-/* ===== Content Area ===== */
-.content {
-  flex: 1;
-  padding: 24px;
-  overflow-y: auto;
-}
-
-.page { display: none; animation: fadeIn 0.3s ease; }
-.page.active { display: block; }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ===== Cards ===== */
-.card {
-  background: var(--card);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 20px;
-  margin-bottom: 16px;
-  transition: var(--transition);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-hover);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* ===== Stats Grid ===== */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-}
-
-.stat-card.blue::before { background: var(--primary); }
-.stat-card.green::before { background: var(--success); }
-.stat-card.orange::before { background: var(--warning); }
-.stat-card.red::before { background: var(--error); }
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
-}
-
-.stat-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.stat-extra {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 8px;
-}
-
-/* ===== Buttons ===== */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: var(--transition);
-  background: white;
-  color: var(--text);
-  white-space: nowrap;
-}
-
-.btn:hover { transform: translateY(-1px); }
-.btn:active { transform: translateY(0); }
-
-.btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
-.btn-primary:hover { background: var(--primary-dark); }
-
-.btn-success { background: var(--success); color: white; border-color: var(--success); }
-.btn-warning { background: var(--warning); color: white; border-color: var(--warning); }
-.btn-danger { background: var(--error); color: white; border-color: var(--error); }
-
-.btn-outline { background: white; border-color: var(--border); }
-.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-
-.btn-sm { padding: 4px 12px; font-size: 13px; }
-.btn-lg { padding: 12px 24px; font-size: 15px; }
-
-/* ===== Forms ===== */
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-label {
-  display: block;
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.form-control {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 14px;
-  transition: var(--transition);
-  background: white;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-}
-
-/* ===== Tables ===== */
-.table-wrapper {
-  overflow-x: auto;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-th {
-  background: #fafafa;
-  padding: 12px 16px;
-  text-align: left;
-  font-weight: 500;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-tr:hover td {
-  background: #fafafa;
-}
-
-/* ===== Tags & Badges ===== */
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.tag-blue { background: #e6f7ff; color: #1890ff; }
-.tag-green { background: #f6ffed; color: #52c41a; }
-.tag-orange { background: #fff7e6; color: #fa8c16; }
-.tag-red { background: #fff2f0; color: #ff4d4f; }
-
-/* ===== Zone Cards ===== */
-.zone-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.zone-card {
-  background: white;
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow);
-  border-left: 4px solid var(--border);
-  transition: var(--transition);
-}
-
-.zone-card:hover { box-shadow: var(--shadow-hover); }
-.zone-card.zone-a { border-left-color: #ff4d4f; }
-.zone-card.zone-b { border-left-color: #1890ff; }
-.zone-card.zone-c { border-left-color: #52c41a; }
-
-.zone-name {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.zone-info {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin: 6px 0;
-}
-
-.zone-actions {
-  margin-top: 16px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* ===== Alert/Message ===== */
-.alert {
-  padding: 12px 16px;
-  border-radius: 6px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-}
-
-.alert-success { background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
-.alert-error { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; }
-.alert-warning { background: #fffbe6; border: 1px solid #ffe58f; color: #fa8c16; }
-.alert-info { background: #e6f7ff; border: 1px solid #91d5ff; color: #1890ff; }
-
-/* ===== Modal ===== */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.45);
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s ease;
-}
-
-.modal-overlay.show { display: flex; }
-
-.modal {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  width: 90%;
-  max-width: 520px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 12px 48px rgba(0,0,0,0.15);
-  animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-title {
-  font-size: 18px;
-  font-weight: 500;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-footer {
-  margin-top: 20px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-/* ===== Toast ===== */
-.toast {
-  position: fixed;
-  top: 24px;
-  right: 24px;
-  padding: 12px 20px;
-  border-radius: 6px;
-  background: white;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-  font-size: 14px;
-  z-index: 2000;
-  transform: translateX(120%);
-  transition: transform 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toast.show { transform: translateX(0); }
-.toast.success { border-left: 4px solid var(--success); }
-.toast.error { border-left: 4px solid var(--error); }
-
-/* ===== Responsive ===== */
-@media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
-  .main-wrapper { margin-left: 0; }
-  .stats-grid { grid-template-columns: 1fr; }
-  .zone-grid { grid-template-columns: 1fr; }
-  .content { padding: 16px; }
-}
-
-/* ===== Utility ===== */
-.mt-16 { margin-top: 16px; }
-.mb-16 { margin-bottom: 16px; }
-.flex { display: flex; }
-.gap-8 { gap: 8px; }
-.gap-16 { gap: 16px; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.text-success { color: var(--success); }
-.text-error { color: var(--error); }
-.text-warning { color: var(--warning); }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钢城智慧铃声系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F1F5F9; font-family: 'Inter', sans-serif; }
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); }
+        .gradient-blue { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+        .gradient-orange { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); }
+        .gradient-green { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+        .gradient-red { background: linear-gradient(135deg, #F43F5E 0%, #E11D48 100%); }
+        .gradient-purple { background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); }
+        .soft-shadow { box-shadow: 0 12px 36px rgba(148, 163, 184, 0.1); }
+        .nav-item.active { background: #EFF6FF; color: #2563EB; font-weight: 600; }
+        .nav-item.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 20px; background: #2563EB; border-radius: 0 4px 4px 0; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .toggle-checkbox:checked { right: 0; border-color: #3B82F6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3B82F6; }
+        .toggle-checkbox { right: 4px; z-index: 1; transition: all 0.3s; }
+        .toggle-label { width: 44px; height: 24px; background-color: #E2E8F0; border-radius: 9999px; transition: all 0.3s; }
+    </style>
 </head>
-<body>
+<body class="h-screen w-screen p-4 lg:p-6 overflow-hidden flex items-center justify-center">
 
-<!-- Sidebar -->
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <div class="logo">🔔</div>
-    校园广播系统
-  </div>
-  <nav class="sidebar-nav">
-    <div class="nav-item active" data-page="dashboard">
-      <span class="icon">📊</span> 系统总览
-    </div>
-    <div class="nav-item" data-page="schedules">
-      <span class="icon">📋</span> 课表管理
-    </div>
-    <div class="nav-item" data-page="zones">
-      <span class="icon">🔊</span> 区域管理
-    </div>
-    <div class="nav-item" data-page="bells">
-      <span class="icon">🎵</span> 铃声管理
-    </div>
-    <div class="nav-item" data-page="holidays">
-      <span class="icon">📅</span> 节假日管理
-    </div>
-    <div class="nav-item" data-page="settings">
-      <span class="icon">⚙️</span> 系统设置
-    </div>
-    <div class="nav-item" data-page="logs">
-      <span class="icon">📜</span> 运行日志
-    </div>
-  </nav>
-</aside>
+<div id="app" class="w-full h-full max-w-[1600px] flex rounded-[32px] bg-slate-50 soft-shadow border border-slate-200 overflow-hidden relative">
+    
+    <!-- 左侧边栏 -->
+    <aside class="w-64 bg-white flex flex-col border-r border-slate-100 flex-shrink-0 z-20 shadow-sm">
+        <div class="h-20 flex items-center px-6 gap-3 border-b border-slate-50">
+            <div class="w-10 h-10 rounded-xl gradient-blue flex items-center justify-center shadow-lg shadow-blue-500/30 text-white font-bold text-xl">GC</div>
+            <div>
+                <h1 class="font-bold text-slate-800 tracking-tight leading-tight text-sm">钢城智慧铃声</h1>
+                <p class="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Smart Bell System</p>
+            </div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-6">
+            <div v-for="(group, idx) in navGroups" :key="idx">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-3">{{ group.label }}</div>
+                <div class="space-y-1">
+                    <button v-for="item in group.items" :key="item.id" @click="currentPage = item.id"
+                            :class="['w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors relative', currentPage === item.id ? 'active' : 'text-slate-500 hover:bg-slate-50']">
+                        <span class="text-lg opacity-80" v-html="item.icon"></span>
+                        {{ item.name }}
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div class="p-4 border-t border-slate-100">
+            <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span class="text-xs font-semibold text-emerald-600">系统运行中</span>
+            </div>
+        </div>
+    </aside>
 
-<!-- Main -->
-<div class="main-wrapper">
-  <!-- Header -->
-  <header class="header">
-    <div class="header-left">
-      <h1 class="header-title" id="pageTitle">系统总览</h1>
-    </div>
-    <div class="header-right">
-      <span class="status-dot online" id="statusDot"></span>
-      <span id="statusText">运行中</span>
-      <span class="header-time" id="clock">--:--:--</span>
-    </div>
-  </header>
+    <!-- 右侧主内容区 -->
+    <main class="flex-1 flex flex-col min-w-0 bg-[#F8FAFC]">
+        <!-- 顶部 Header -->
+        <header class="h-20 px-8 flex items-center justify-between border-b border-slate-200 glass-panel z-10 sticky top-0">
+            <h2 class="text-xl font-bold text-slate-800 tracking-tight">{{ currentTitle }}</h2>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-medium text-slate-600 shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    NTP 偏差 <span class="text-emerald-500 font-mono">+0.003s</span>
+                </div>
+                <div class="text-right">
+                    <div class="text-lg font-bold text-slate-800 font-mono leading-none tracking-tight">{{ timeString }}</div>
+                    <div class="text-[11px] text-slate-400 font-medium mt-1">{{ dateString }}</div>
+                </div>
+                <div class="w-px h-8 bg-slate-200"></div>
+                <div class="flex items-center gap-3 cursor-pointer group">
+                    <div class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold border-2 border-white shadow-sm">{{ currentUser.initial }}</div>
+                    <div class="hidden md:block">
+                        <div class="text-sm font-semibold text-slate-700 group-hover:text-blue-600">{{ currentUser.name }}</div>
+                        <div class="text-[10px] text-slate-400">{{ currentUser.role }}</div>
+                    </div>
+                    <button @click="logout" class="ml-2 px-2 py-1 text-xs text-slate-400 hover:text-red-500 transition-colors">退出</button>
+                </div>
+            </div>
+        </header>
 
-  <!-- Content -->
-  <main class="content">
-    
-    <!-- ===== 总览页 ===== -->
-    <div class="page active" id="page-dashboard">
-      <div id="dashAlert"></div>
-      
-      <!-- 统计卡片 -->
-      <div class="stats-grid" id="statsGrid"></div>
-      
-      <!-- 快捷操作 -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">⚡ 快捷操作</div>
+        <!-- 页面视图区域 -->
+        <div class="flex-1 overflow-y-auto p-8 scroll-smooth">
+            
+            <!-- 1. 系统总览 Dashboard -->
+            <div v-show="currentPage === 'dashboard'" class="animate-fade-in space-y-8">
+                <!-- 快速广播 -->
+                <div class="bg-white rounded-3xl p-6 border border-red-100 soft-shadow relative overflow-hidden">
+                    <div class="absolute -right-10 -top-10 w-40 h-40 bg-red-50 rounded-full blur-3xl opacity-50"></div>
+                    <div class="flex justify-between items-center mb-6 relative">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center animate-pulse">🎙️</div>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-lg">快速广播 (TTS)</h3>
+                                <p class="text-xs text-slate-400">最高优先级，打断当前播放</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold border border-emerald-100">通道就绪</span>
+                    </div>
+                    <div class="space-y-4 relative">
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm font-semibold text-slate-600 w-16">广播目标</span>
+                            <div class="flex gap-2">
+                                <label v-for="zone in zones" :key="zone.id" class="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-blue-400 transition-colors bg-slate-50">
+                                    <input type="checkbox" v-model="broadcastZones" :value="zone.id" class="rounded text-blue-600 w-4 h-4 accent-blue-600">
+                                    <span class="text-sm font-medium text-slate-700">{{ zone.name }}</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm font-semibold text-slate-600 w-16">播报内容</span>
+                            <div class="flex-1 flex gap-3">
+                                <input v-model="broadcastText" type="text" placeholder="请输入需要紧急播报的文字内容..." class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm">
+                                <button @click="startBroadcast" class="px-6 py-2.5 gradient-red text-white font-bold rounded-xl shadow-lg shadow-red-500/30 hover:opacity-90 transition-opacity whitespace-nowrap">立即广播</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 pt-2">
+                            <span class="text-xs font-semibold text-slate-400 w-16">快捷模板</span>
+                            <div class="flex flex-wrap gap-2">
+                                <button v-for="tpl in broadcastTemplates" :key="tpl" @click="broadcastText = tpl" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium hover:bg-slate-200 transition-colors">{{ tpl }}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="grid grid-cols-4 gap-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center text-xl">📅</div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">当前课表</p>
+                                <p class="text-xl font-bold text-slate-800 mt-0.5">{{ status.active_schedule }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-xl">🚀</div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">系统状态</p>
+                                <p class="text-xl font-bold mt-0.5" :class="status.global_paused ? 'text-red-600' : 'text-emerald-600'">{{ status.global_paused ? '已暂停' : '运行中' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center text-xl">🔔</div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">下次打铃</p>
+                                <p class="text-xl font-bold text-slate-800 font-mono mt-0.5">{{ nextBell.time }}</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">{{ nextBell.zone }} {{ nextBell.name }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center text-xl">📡</div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">在线区域</p>
+                                <p class="text-xl font-bold text-slate-800 mt-0.5">{{ zones.length }} / {{ zones.length }} 正常</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 区域控制台 -->
+                <div>
+                    <div class="flex justify-between items-end mb-4 px-1">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-lg">区域控制台</h3>
+                            <p class="text-xs text-slate-400">今日与明日打铃策略管理</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-6">
+                        <div v-for="(zone, idx) in zones" :key="zone.id" 
+                             class="p-6 rounded-3xl text-white soft-shadow relative overflow-hidden flex flex-col justify-between min-h-[220px]"
+                             :class="zoneColors[idx]">
+                            <div class="absolute -right-4 -top-4 text-6xl opacity-20 transform rotate-12">{{ zoneIcons[idx] }}</div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <h4 class="text-xl font-bold">{{ zone.name }}</h4>
+                                    <span class="px-2 py-1 bg-white/20 rounded-md text-[10px] font-bold">{{ zone.enabled ? '已启用' : '已禁用' }}</span>
+                                </div>
+                                <p class="text-sm opacity-80 font-medium">音量: {{ zone.volume }}%</p>
+                            </div>
+                            <div class="mt-4 bg-black/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
+                                <div class="flex gap-2 mt-3">
+                                    <button @click="todayControl(zone.id, 'ring')" class="flex-1 py-1.5 bg-white text-sm font-bold rounded-lg shadow-sm hover:opacity-90 transition-opacity">今日打铃</button>
+                                    <button @click="todayControl(zone.id, 'no_ring')" class="flex-1 py-1.5 bg-white/30 hover:bg-white/40 text-white border border-white/30 text-sm font-bold rounded-lg transition-colors">今日不打铃</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 全局控制 -->
+                <div class="bg-slate-800 rounded-3xl p-6 text-white soft-shadow">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">全局干预</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button @click="doAction('pause')" class="flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors border border-white/5">
+                            <span class="font-medium text-sm">⏸️ 全局暂停打铃</span>
+                        </button>
+                        <button @click="doAction('resume')" class="flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors border border-white/5">
+                            <span class="font-medium text-sm">▶️ 全局恢复打铃</span>
+                        </button>
+                        <button @click="doAction('stop')" class="flex items-center justify-between px-4 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-xl transition-colors border border-red-500/20">
+                            <span class="font-medium text-sm text-red-400">🛑 停止所有播放</span>
+                        </button>
+                        <button @click="quickRing('emergency')" class="flex items-center justify-between px-4 py-3 bg-orange-500/20 hover:bg-orange-500/30 rounded-xl transition-colors border border-orange-500/20">
+                            <span class="font-medium text-sm text-orange-400">🚨 紧急铃</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 其他页面占位 -->
+            <div v-show="currentPage !== 'dashboard'" class="animate-fade-in">
+                <div class="bg-white rounded-3xl p-12 border border-slate-100 soft-shadow text-center">
+                    <div class="text-6xl mb-4">🚧</div>
+                    <h3 class="text-xl font-bold text-slate-700">正在构建 {{ currentTitle }} 模块</h3>
+                    <p class="text-sm mt-2 text-slate-400">请等待后续开发...</p>
+                </div>
+            </div>
+
         </div>
-        <div class="flex gap-8 flex-wrap">
-          <button class="btn btn-danger" onclick="bellAction('pause')">全局暂停</button>
-          <button class="btn btn-success" onclick="bellAction('resume')">全局恢复</button>
-          <button class="btn btn-warning" onclick="bellAction('stop')">停止播放</button>
-        </div>
-      </div>
-      
-      <!-- 区域状态 -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🔊 区域状态</div>
-        </div>
-        <div class="zone-grid" id="zoneGrid"></div>
-      </div>
-      
-      <!-- 快速打铃 -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🔔 快速打铃</div>
-        </div>
-        <div class="flex gap-8 flex-wrap">
-          <button class="btn btn-danger btn-sm" onclick="quickRing('emergency')">紧急铃</button>
-          <button class="btn btn-primary btn-sm" onclick="quickRing('class_start')">上课铃</button>
-          <button class="btn btn-success btn-sm" onclick="quickRing('class_end')">下课铃</button>
-          <button class="btn btn-warning btn-sm" onclick="quickRing('prepare')">预备铃</button>
-        </div>
-      </div>
-      
-      <!-- 今日例外 -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">⚡ 今日例外</div>
-        </div>
-        <p style="font-size: 13px; color: #8c8c8c; margin-bottom: 12px;">设置今天的临时操作（如暂停打铃），仅影响当天</p>
-        <div class="flex gap-8 flex-wrap mb-16">
-          <button class="btn btn-danger btn-sm" onclick="addException('pause_all')">今天全部暂停</button>
-          <button class="btn btn-warning btn-sm" onclick="addException('pause_zone','A')">教学楼暂停</button>
-          <button class="btn btn-warning btn-sm" onclick="addException('pause_zone','B')">操场暂停</button>
-          <button class="btn btn-warning btn-sm" onclick="addException('pause_zone','C')">宿舍暂停</button>
-        </div>
-        <div id="exceptionList"></div>
-      </div>
-    </div>
-    
-    <!-- ===== 课表页 ===== -->
-    <div class="page" id="page-schedules">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📋 课表方案</div>
-          <div class="flex gap-8">
-            <select id="schedSelect" style="padding: 6px 12px; border: 1px solid #e8e8e8; border-radius: 6px;" onchange="loadScheduleTasks()"></select>
-            <button class="btn btn-primary btn-sm" onclick="showAddSchedule()">新建</button>
-            <button class="btn btn-success btn-sm" onclick="activateSchedule()">激活</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteSchedule()">删除</button>
-          </div>
-        </div>
-      </div>
-      
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📝 打铃任务</div>
-          <div class="flex gap-8">
-            <select id="taskZone" style="padding: 6px 12px; border: 1px solid #e8e8e8; border-radius: 6px; width: 100px;">
-              <option value="A">区域A</option>
-              <option value="B">区域B</option>
-              <option value="C">区域C</option>
-            </select>
-            <button class="btn btn-primary btn-sm" onclick="showAddTask()">添加任务</button>
-            <button class="btn btn-success btn-sm" onclick="exportSchedule()">导出</button>
-            <button class="btn btn-warning btn-sm" onclick="document.getElementById('importFile').click()">导入</button>
-            <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="importSchedule(this)">
-          </div>
-        </div>
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>区域</th>
-                <th>时间</th>
-                <th>铃声类型</th>
-                <th>任务名称</th>
-                <th>适用日期</th>
-                <th>一次性</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="taskTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    
-    <!-- ===== 区域页 ===== -->
-    <div class="page" id="page-zones">
-      <div class="zone-grid" id="zoneManageGrid"></div>
-    </div>
-    
-    <!-- ===== 铃声页 ===== -->
-    <div class="page" id="page-bells">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🎵 铃声库</div>
-          <button class="btn btn-primary btn-sm" onclick="document.getElementById('bellFile').click()">上传铃声</button>
-          <input type="file" id="bellFile" accept=".mp3,.wav,.ogg" style="display:none" onchange="uploadBell(this)">
-        </div>
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr><th>名称</th><th>类型</th><th>文件</th><th>上传时间</th><th>操作</th></tr>
-            </thead>
-            <tbody id="bellTable"></tbody>
-          </table>
-        </div>
-      </div>
-      
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🔗 铃声绑定</div>
-        </div>
-        <p style="font-size: 13px; color: #8c8c8c; margin-bottom: 16px;">为每个区域的每种铃声类型绑定不同的音频文件</p>
-        <div id="bellBindings"></div>
-      </div>
-    </div>
-    
-    <!-- ===== 节假日页 ===== -->
-    <div class="page" id="page-holidays">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📅 即将到来的节假日</div>
-        </div>
-        <div id="upcomingList"></div>
-      </div>
-      
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🗓️ 全年节假日</div>
-          <div class="flex gap-8">
-            <select id="holidayYear" style="padding: 6px 12px; border: 1px solid #e8e8e8; border-radius: 6px;" onchange="loadHolidays()"></select>
-            <button class="btn btn-primary btn-sm" onclick="showAddHoliday()">自定义假期</button>
-          </div>
-        </div>
-        <div class="table-wrapper" style="max-height: 500px; overflow-y: auto;">
-          <table>
-            <thead>
-              <tr><th>日期</th><th>星期</th><th>名称</th><th>类型</th><th>操作</th></tr>
-            </thead>
-            <tbody id="holidayTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    
-    <!-- ===== 设置页 ===== -->
-    <div class="page" id="page-settings">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🌐 NTP网络校时</div>
-        </div>
-        <div style="max-width: 500px;">
-          <div class="form-group">
-            <label class="form-label">NTP服务器</label>
-            <input type="text" class="form-control" id="ntpServer" value="ntp.aliyun.com">
-          </div>
-          <div class="form-group">
-            <label class="form-label">每日校时时间</label>
-            <input type="time" class="form-control" id="ntpTime" value="06:00">
-          </div>
-          <div class="form-group">
-            <label class="form-label">上次校时</label>
-            <span id="ntpLast" style="color: #8c8c8c;">从未</span>
-          </div>
-          <div class="flex gap-8">
-            <button class="btn btn-primary" onclick="ntpSyncNow()">立即校时</button>
-            <button class="btn btn-success" onclick="saveSettings('ntp')">保存设置</button>
-          </div>
-        </div>
-      </div>
-      
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🤖 钉钉机器人告警</div>
-        </div>
-        <div style="max-width: 500px;">
-          <div class="form-group">
-            <label class="form-label">Webhook地址</label>
-            <input type="text" class="form-control" id="dingtalkWebhook" placeholder="https://oapi.dingtalk.com/robot/send?access_token=...">
-            <p style="font-size: 12px; color: #8c8c8c; margin-top: 4px;">在钉钉群中添加机器人后获取Webhook地址</p>
-          </div>
-          <div class="form-group">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-              <input type="checkbox" id="dingtalkEnabled"> 启用钉钉告警（仅在异常时通知）
-            </label>
-          </div>
-          <div class="flex gap-8">
-            <button class="btn btn-primary" onclick="dingtalkTest()">发送测试消息</button>
-            <button class="btn btn-success" onclick="saveSettings('dingtalk')">保存设置</button>
-          </div>
-        </div>
-      </div>
-      
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🔒 密码保护</div>
-        </div>
-        <div style="max-width: 500px;">
-          <p style="font-size: 13px; color: #8c8c8c; margin-bottom: 12px;">设置后访问系统需要输入密码</p>
-          <div class="form-group">
-            <label class="form-label">访问密码</label>
-            <input type="password" class="form-control" id="setPassword" placeholder="留空则不设密码">
-          </div>
-          <button class="btn btn-success" onclick="saveSettings('password')">保存设置</button>
-        </div>
-      </div>
-      
-      <!-- 钉钉配置说明 -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📖 钉钉机器人配置说明</div>
-        </div>
-        <div style="font-size: 13px; line-height: 1.8; color: #595959;">
-          <h4 style="margin: 12px 0 8px; color: #262626;">第一步：在钉钉群中添加机器人</h4>
-          <ol style="padding-left: 20px;">
-            <li>打开钉钉群聊 → 右上角"..." → 群设置</li>
-            <li>点击"智能群助手" → "添加机器人" → "自定义"</li>
-            <li>点击"添加"，设置机器人名称</li>
-            <li><strong>安全设置</strong>：选择"自定义关键词"，添加关键词 <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">校园广播</code></li>
-            <li>点击"完成"，复制Webhook地址</li>
-          </ol>
-          
-          <h4 style="margin: 12px 0 8px; color: #262626;">第二步：在本系统中配置</h4>
-          <ol style="padding-left: 20px;">
-            <li>在上方"Webhook地址"栏粘贴复制的地址</li>
-            <li>勾选"启用钉钉告警"</li>
-            <li>点击"发送测试消息"验证配置</li>
-            <li>点击"保存设置"</li>
-          </ol>
-          
-          <div class="alert alert-info" style="margin-top: 16px;">
-            💡 告警仅在异常时发送（如铃声文件缺失、打铃失败等），不会每天发送报告
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- ===== 日志页 ===== -->
-    <div class="page" id="page-logs">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📜 运行日志</div>
-          <div class="flex gap-8">
-            <select id="logCategory" style="padding: 6px 12px; border: 1px solid #e8e8e8; border-radius: 6px;" onchange="loadLogs()">
-              <option value="">全部分类</option>
-              <option value="bell">打铃</option>
-              <option value="manual">手动</option>
-              <option value="exception">例外</option>
-              <option value="system">系统</option>
-              <option value="settings">设置</option>
-            </select>
-            <button class="btn btn-outline btn-sm" onclick="loadLogs()">刷新</button>
-          </div>
-        </div>
-        <div class="table-wrapper" style="max-height: 600px; overflow-y: auto;">
-          <table>
-            <thead>
-              <tr><th>时间</th><th>级别</th><th>类别</th><th>信息</th></tr>
-            </thead>
-            <tbody id="logTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    
-  </main>
+    </main>
 </div>
-
-<!-- Modal -->
-<div class="modal-overlay" id="modal">
-  <div class="modal" id="modalContent"></div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
 
 <script>
-// ====== 全局变量 ======
-let currentSchedule = null;
-const BELL_TYPES = {
-  class_start: '上课铃', class_end: '下课铃', prepare: '预备铃',
-  exercise: '课间操', lunch: '午餐铃', school_end: '放学铃', emergency: '紧急铃', custom: '自定义'
-};
-const ZONE_NAMES = { A: '教学楼', B: '操场', C: '宿舍楼' };
-const WEEKDAYS = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-const PAGE_TITLES = {
-  dashboard: '系统总览', schedules: '课表管理', zones: '区域管理',
-  bells: '铃声管理', holidays: '节假日管理', settings: '系统设置', logs: '运行日志'
-};
+const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
 
-// ====== 工具函数 ======
-async function api(url, method = 'GET', body = null) {
-  const opt = {
-    method,
-    headers: { 'Content-Type': 'application/json', 'X-Auth-Token': getCookie('auth_token') }
-  };
-  if (body) opt.body = JSON.stringify(body);
-  try {
-    const r = await fetch(url, opt);
-    if (r.status === 401) { window.location.reload(); return null; }
-    return await r.json();
-  } catch (e) { toast('请求失败: ' + e.message, true); return null; }
-}
+createApp({
+    setup() {
+        // 导航配置
+        const navGroups = [
+            {
+                label: '概览',
+                items: [{ id: 'dashboard', name: '系统总览', icon: '◱' }]
+            },
+            {
+                label: '管理',
+                items: [
+                    { id: 'schedules', name: '排课管理', icon: '📅' },
+                    { id: 'overrides', name: '预约铃声', icon: '⏳' },
+                    { id: 'zones', name: '区域控制', icon: '🎛️' },
+                    { id: 'bells', name: '铃声管理', icon: '🎵' }
+                ]
+            },
+            {
+                label: '配置',
+                items: [
+                    { id: 'holidays', name: '节假日同步', icon: '🏖️' },
+                    { id: 'schedule', name: '预约控制', icon: '⚙️' },
+                    { id: 'settings', name: '系统设置', icon: '🔧' }
+                ]
+            },
+            {
+                label: '系统',
+                items: [
+                    { id: 'logs', name: '运行日志', icon: '📋' }
+                ]
+            }
+        ];
 
-function getCookie(name) {
-  const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return v ? v.pop() : '';
-}
+        const currentPage = ref('dashboard');
+        const currentTitle = computed(() => {
+            for (let g of navGroups) {
+                const item = g.items.find(i => i.id === currentPage.value);
+                if (item) return item.name;
+            }
+            return '系统总览';
+        });
 
-function toast(msg, err = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast ' + (err ? 'error' : 'success') + ' show';
-  setTimeout(() => t.className = 'toast', 3000);
-}
+        // 用户信息
+        const currentUser = ref({ name: 'Admin', role: '管理员', initial: 'A' });
 
-function fmtDays(d) {
-  if (!d) return '每天';
-  return d.split(',').map(x => WEEKDAYS[parseInt(x)] || x).join(' ');
-}
+        // 系统状态
+        const status = ref({
+            active_schedule: '平日课表',
+            global_paused: false,
+            current_time: '--:--:--',
+            current_date: '',
+            weekday: ''
+        });
 
-// ====== 导航 ======
-document.querySelectorAll('.nav-item').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const page = btn.dataset.page;
-    document.getElementById('page-' + page).classList.add('active');
-    document.getElementById('pageTitle').textContent = PAGE_TITLES[page];
-    loadPage(page);
-  };
-});
+        // 区域数据
+        const zones = ref([]);
+        const zoneColors = ['gradient-blue', 'gradient-orange', 'gradient-green'];
+        const zoneIcons = ['🏫', '🏃', '🏢'];
 
-function loadPage(page) {
-  switch (page) {
-    case 'dashboard': loadDashboard(); break;
-    case 'schedules': loadSchedules(); break;
-    case 'zones': loadZones(); break;
-    case 'bells': loadBells(); break;
-    case 'holidays': loadHolidays(); break;
-    case 'settings': loadSettings(); break;
-    case 'logs': loadLogs(); break;
-  }
-}
+        // 下次打铃
+        const nextBell = ref({ time: '--:--', zone: '--', name: '--' });
 
-// ====== 时钟 ======
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clock').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
-}
-setInterval(updateClock, 1000);
-updateClock();
+        // 广播相关
+        const broadcastZones = ref([]);
+        const broadcastText = ref('');
+        const broadcastTemplates = ['请保持安静', '考试开始，请停止答题', '考试结束，请交卷', '请班主任到会议室', '请全体师生到操场集合'];
 
-// ====== 总览页 ======
-async function loadDashboard() {
-  const d = await api('/api/status');
-  if (!d || !d.success) return;
-  
-  // 统计卡片
-  const sg = document.getElementById('statsGrid');
-  sg.innerHTML = `
-    <div class="stat-card blue">
-      <div class="stat-label">当前课表</div>
-      <div class="stat-value">${d.active_schedule}</div>
-    </div>
-    <div class="stat-card ${d.should_bell_today ? 'green' : 'red'}">
-      <div class="stat-label">今日状态</div>
-      <div class="stat-value">${d.should_bell_today ? '正常打铃' : '休息日'}</div>
-    </div>
-    <div class="stat-card ${d.global_paused ? 'red' : 'green'}">
-      <div class="stat-label">全局状态</div>
-      <div class="stat-value">${d.global_paused ? '已暂停' : '运行中'}</div>
-    </div>
-    <div class="stat-card orange">
-      <div class="stat-label">下次打铃</div>
-      <div class="stat-value" style="font-size: 20px;">${d.next_bell ? d.next_bell.time : '--:--'}</div>
-      <div class="stat-extra">${d.next_bell ? d.next_bell.name : ''}</div>
-    </div>
-  `;
-  
-  // 提醒条
-  const alertDiv = document.getElementById('dashAlert');
-  if (d.global_paused) {
-    alertDiv.className = 'alert alert-error';
-    alertDiv.innerHTML = '<strong>⚠️ 系统已全局暂停</strong>，打铃不会执行。点击"全局恢复"恢复正常。';
-    alertDiv.style.display = 'block';
-  } else if (!d.should_bell_today) {
-    alertDiv.className = 'alert alert-warning';
-    alertDiv.innerHTML = '😴 今天是休息日，不打铃';
-    alertDiv.style.display = 'block';
-  } else {
-    alertDiv.style.display = 'none';
-  }
-  
-  // 区域状态
-  const zg = document.getElementById('zoneGrid');
-  zg.innerHTML = d.zones.map(z => {
-    const cls = 'zone-' + z.id.toLowerCase();
-    const isPlaying = z.playing;
-    const isPaused = z.paused;
-    return `<div class="zone-card ${cls}">
-      <div class="zone-name">
-        ${z.name}
-        <span class="tag ${isPlaying ? 'tag-green' : isPaused ? 'tag-red' : 'tag-blue'}">${isPlaying ? '播放中' : isPaused ? '已暂停' : '空闲'}</span>
-      </div>
-      <div class="zone-info">🔊 音量: ${z.volume}%</div>
-      <div class="zone-info">🎧 设备: ${z.device}</div>
-      <div class="zone-actions">
-        ${isPaused ? `<button class="btn btn-success btn-sm" onclick="bellAction('resume','${z.id}')">恢复</button>` : `<button class="btn btn-danger btn-sm" onclick="bellAction('pause','${z.id}')">暂停</button>`}
-        ${isPlaying ? `<button class="btn btn-warning btn-sm" onclick="bellAction('stop','${z.id}')">停止</button>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-  
-  // 今日例外
-  const el = document.getElementById('exceptionList');
-  if (d.today_exceptions && d.today_exceptions.length) {
-    el.innerHTML = d.today_exceptions.map(e => `<div style="font-size: 13px; color: #fa8c16; margin: 6px 0; display: flex; align-items: center; justify-content: space-between;">
-      🛑 ${e.action === 'pause_all' ? '全局暂停' : e.zone_id + '区域暂停'}
-      <button class="btn btn-outline btn-sm" onclick="removeException(${e.id})">取消</button>
-    </div>`).join('');
-  } else {
-    el.innerHTML = '<span style="color: #8c8c8c; font-size: 13px;">无今日例外</span>';
-  }
-}
+        // 时钟
+        const timeString = ref('');
+        const dateString = ref('');
+        let timer = null;
 
-async function bellAction(action, zone) {
-  await api('/api/bell/' + action, 'POST', { zone_id: zone });
-  toast(action === 'pause' ? '已暂停' : action === 'resume' ? '已恢复' : '已停止');
-  loadDashboard();
-}
+        // API调用
+        async function api(path, method, data) {
+            const opts = { method: method || 'GET', headers: { 'Content-Type': 'application/json' } };
+            if (data) opts.body = JSON.stringify(data);
+            try {
+                const resp = await fetch(path, opts);
+                return await resp.json();
+            } catch (e) {
+                console.error('API Error:', e);
+                return null;
+            }
+        }
 
-function quickRing(type) {
-  api('/api/bell/ring', 'POST', { zone_id: 'A', bell_type: type });
-  toast('手动打铃: ' + BELL_TYPES[type]);
-}
+        // 加载状态
+        async function loadStatus() {
+            const d = await api('/api/status');
+            if (d && d.success) {
+                status.value = d;
+                zones.value = d.zones || [];
+                if (d.next_bells && d.next_bells.length > 0) {
+                    nextBell.value = {
+                        time: d.next_bells[0].time,
+                        zone: d.next_bells[0].zone_name,
+                        name: d.next_bells[0].name
+                    };
+                }
+            }
+        }
 
-async function addException(action, zone) {
-  let reason = '';
-  if (action === 'pause_all') reason = '今天全部暂停';
-  else if (zone) reason = ZONE_NAMES[zone] + '暂停';
-  await api('/api/today_exceptions', 'POST', { action, zone_id: zone || '', reason });
-  toast('已设置今日例外');
-  loadDashboard();
-}
+        // 加载用户信息
+        async function loadUserInfo() {
+            const d = await api('/api/user/info');
+            if (d && d.success && d.user) {
+                currentUser.value = {
+                    name: d.user.display_name,
+                    role: d.user.zone_scope === 'all' ? '管理员' : d.user.zone_scope === 'chuzhong' ? '初中管理员' : '小学管理员',
+                    initial: d.user.display_name.charAt(0)
+                };
+            }
+        }
 
-async function removeException(eid) {
-  await api('/api/today_exceptions/' + eid, 'DELETE');
-  toast('已取消例外');
-  loadDashboard();
-}
+        // 广播
+        async function startBroadcast() {
+            if (!broadcastText.value.trim()) { alert('请输入广播内容'); return; }
+            if (broadcastZones.value.length === 0) { alert('请选择广播区域'); return; }
+            const r = await api('/api/broadcast', 'POST', { text: broadcastText.value, zone_ids: broadcastZones.value });
+            if (r && r.success) {
+                alert('广播已发送');
+                broadcastText.value = '';
+            } else {
+                alert('广播失败: ' + (r ? r.error : '网络错误'));
+            }
+        }
 
-// ====== 课表页 ======
-async function loadSchedules() {
-  const d = await api('/api/schedules');
-  if (!d || !d.success) return;
-  const sel = document.getElementById('schedSelect');
-  sel.innerHTML = d.schedules.map(s => `<option value="${s.id}" ${s.is_active ? 'selected' : ''}>${s.name} ${s.is_active ? '[激活]' : ''} (${s.task_count}条)</option>`).join('');
-  loadScheduleTasks();
-}
+        // 今日控制
+        async function todayControl(zoneId, action) {
+            const r = await api('/api/today_control', 'POST', { zone_id: zoneId, action: action });
+            if (r && r.success) {
+                loadStatus();
+            }
+        }
 
-async function loadScheduleTasks() {
-  const sid = document.getElementById('schedSelect').value;
-  if (!sid) return;
-  const d = await api('/api/schedules');
-  if (!d || !d.success) return;
-  const sched = d.schedules.find(s => s.id == sid);
-  if (!sched) return;
-  const tb = document.getElementById('taskTable');
-  const allTasks = [];
-  for (const [zid, tasks] of Object.entries(sched.zone_tasks)) {
-    tasks.forEach(t => allTasks.push({ ...t, zone_id: zid }));
-  }
-  allTasks.sort((a, b) => a.zone_id.localeCompare(b.zone_id) || a.time.localeCompare(b.time));
-  tb.innerHTML = allTasks.map(t => `<tr>
-    <td><strong>${ZONE_NAMES[t.zone_id] || t.zone_id}</strong></td>
-    <td><strong>${t.time}</strong></td>
-    <td><span class="tag tag-blue">${BELL_TYPES[t.bell_type] || t.bell_type}</span></td>
-    <td>${t.task_name || '-'}</td>
-    <td>${fmtDays(t.days)}</td>
-    <td>${t.one_time_date || '-'}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="deleteTask(${t.id})">删除</button></td>
-  </tr>`).join('');
-}
+        // 全局操作
+        async function doAction(action) {
+            await api('/api/bell/' + action, 'POST', {});
+            loadStatus();
+        }
 
-function showAddSchedule() {
-  showModal(`<div class="modal-title">新建课表</div>
-    <div class="form-group">
-      <label class="form-label">课表名称</label>
-      <input type="text" class="form-control" id="newSchedName" placeholder="如：考试课表">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" onclick="createSchedule()">创建</button>
-      <button class="btn btn-outline" onclick="hideModal()">取消</button>
-    </div>`);
-}
+        // 快速打铃
+        async function quickRing(type) {
+            await api('/api/bell/ring', 'POST', { zone_id: 'A', bell_type: type });
+        }
 
-async function createSchedule() {
-  const name = document.getElementById('newSchedName').value.trim();
-  if (!name) { toast('请输入名称', true); return; }
-  await api('/api/schedules', 'POST', { name });
-  hideModal();
-  toast('课表已创建');
-  loadSchedules();
-}
+        // 退出登录
+        function logout() {
+            document.cookie = 'auth_user=;max-age=0';
+            window.location.href = '/';
+        }
 
-async function activateSchedule() {
-  const sid = document.getElementById('schedSelect').value;
-  await api('/api/schedules/' + sid, 'PUT', { activate: true });
-  toast('课表已激活');
-  loadSchedules();
-}
+        // 时钟更新
+        const updateClock = () => {
+            const now = new Date();
+            timeString.value = now.toLocaleTimeString('zh-CN', { hour12: false });
+            dateString.value = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+        };
 
-async function deleteSchedule() {
-  const sid = document.getElementById('schedSelect').value;
-  if (!confirm('确定删除此课表？')) return;
-  await api('/api/schedules/' + sid, 'DELETE');
-  toast('已删除');
-  loadSchedules();
-}
+        onMounted(() => {
+            updateClock();
+            timer = setInterval(updateClock, 1000);
+            loadStatus();
+            loadUserInfo();
+            setInterval(loadStatus, 30000);
+        });
 
-function showAddTask() {
-  const sid = document.getElementById('schedSelect').value;
-  const zid = document.getElementById('taskZone').value;
-  showModal(`<div class="modal-title">添加打铃任务</div>
-    <div class="form-group">
-      <label class="form-label">时间</label>
-      <input type="time" class="form-control" id="taskTime" value="08:00">
-    </div>
-    <div class="form-group">
-      <label class="form-label">铃声类型</label>
-      <select class="form-control" id="taskBellType">${Object.entries(BELL_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">任务名称</label>
-      <input type="text" class="form-control" id="taskName" placeholder="如：第一节课上课">
-    </div>
-    <div class="form-group">
-      <label class="form-label">适用日期（1-5代表周一到周五，逗号分隔）</label>
-      <input type="text" class="form-control" id="taskDays" value="1,2,3,4,5">
-    </div>
-    <div class="form-group">
-      <label class="form-label">一次性日期（可选）</label>
-      <input type="date" class="form-control" id="taskOneTime">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" onclick="createTask(${sid},'${zid}')">添加</button>
-      <button class="btn btn-outline" onclick="hideModal()">取消</button>
-    </div>`);
-}
+        onUnmounted(() => { if (timer) clearInterval(timer); });
 
-async function createTask(sid, zid) {
-  await api('/api/tasks', 'POST', {
-    schedule_id: sid, zone_id: zid,
-    time: document.getElementById('taskTime').value,
-    bell_type: document.getElementById('taskBellType').value,
-    task_name: document.getElementById('taskName').value,
-    days: document.getElementById('taskDays').value,
-    one_time_date: document.getElementById('taskOneTime').value,
-  });
-  hideModal();
-  toast('任务已添加');
-  loadScheduleTasks();
-}
-
-async function deleteTask(tid) {
-  if (!confirm('删除此任务？')) return;
-  await api('/api/tasks/' + tid, 'DELETE');
-  loadScheduleTasks();
-}
-
-function exportSchedule() { window.open('/api/export', '_blank'); }
-
-async function importSchedule(input) {
-  if (!input.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', input.files[0]);
-  fd.append('schedule_name', input.files[0].name);
-  const r = await fetch('/api/import', { method: 'POST', body: fd });
-  const d = await r.json();
-  toast(d.success ? `导入成功: ${d.imported}条` : '导入失败');
-  loadSchedules();
-  input.value = '';
-}
-
-// ====== 区域页 ======
-async function loadZones() {
-  const d = await api('/api/zones');
-  if (!d || !d.success) return;
-  const g = document.getElementById('zoneManageGrid');
-  g.innerHTML = d.zones.map(z => {
-    const cls = 'zone-' + z.id.toLowerCase();
-    return `<div class="zone-card ${cls}">
-      <div class="zone-name">${z.name}</div>
-      <div class="form-group">
-        <label class="form-label">区域名称</label>
-        <input type="text" class="form-control" value="${z.name}" onchange="updateZone('${z.id}','name',this.value)">
-      </div>
-      <div class="form-group">
-        <label class="form-label">音量 <span id="vol${z.id}">${z.volume}</span>%</label>
-        <input type="range" min="0" max="100" value="${z.volume}" style="width:100%" oninput="document.getElementById('vol${z.id}').textContent=this.value" onchange="updateZone('${z.id}','volume',this.value)">
-      </div>
-      <div class="form-group">
-        <label class="form-label">音频输出设备</label>
-        <input type="text" class="form-control" value="${z.audio_device}" placeholder="默认设备" onchange="updateZone('${z.id}','audio_device',this.value)">
-      </div>
-      <div class="form-group">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-          <input type="checkbox" ${z.enabled ? 'checked' : ''} onchange="updateZone('${z.id}','enabled',this.checked)"> 启用此区域
-        </label>
-      </div>
-      <div class="zone-actions">
-        <button class="btn btn-danger btn-sm" onclick="bellAction('pause','${z.id}')">暂停</button>
-        <button class="btn btn-success btn-sm" onclick="bellAction('resume','${z.id}')">恢复</button>
-        <button class="btn btn-primary btn-sm" onclick="ringZone('${z.id}')">测试打铃</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-async function updateZone(zid, key, val) {
-  await api('/api/zones/' + zid, 'PUT', { [key]: val });
-  toast('已更新');
-}
-
-function ringZone(zid) {
-  api('/api/bell/ring', 'POST', { zone_id: zid, bell_type: 'class_start' });
-  toast('测试打铃');
-}
-
-// ====== 铃声页 ======
-async function loadBells() {
-  const d = await api('/api/bells');
-  if (!d || !d.success) return;
-  const tb = document.getElementById('bellTable');
-  tb.innerHTML = d.bells.map(b => `<tr>
-    <td>${b.name}</td>
-    <td><span class="tag tag-blue">${BELL_TYPES[b.bell_type] || b.bell_type}</span></td>
-    <td style="font-size: 12px; color: #8c8c8c;">${b.filename}</td>
-    <td style="font-size: 12px;">${b.uploaded_at || '-'}</td>
-    <td>
-      <button class="btn btn-primary btn-sm" onclick="playBell('${b.filename}')">试听</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteBell(${b.id})">删除</button>
-    </td>
-  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#8c8c8c;padding:40px;">暂无铃声，请上传</td></tr>';
-  
-  // 铃声绑定
-  const bd = document.getElementById('bellBindings');
-  const types = ['class_start', 'class_end', 'prepare', 'exercise', 'lunch', 'school_end', 'emergency'];
-  const zones = ['A', 'B', 'C'];
-  let html = '<div class="table-wrapper"><table><thead><tr><th>铃声类型</th><th>区域A</th><th>区域B</th><th>区域C</th></tr></thead><tbody>';
-  types.forEach(t => {
-    html += `<tr><td><strong>${BELL_TYPES[t]}</strong></td>`;
-    zones.forEach(z => {
-      const key = `${z}_${t}`;
-      const cur = d.bindings[key] || '';
-      const opts = d.bells.map(b => `<option value="${b.id}" ${b.id == cur ? 'selected' : ''}>${b.name}</option>`).join('');
-      html += `<td><select onchange="updateBinding('${z}','${t}',this.value)" style="padding:4px 8px;border:1px solid #e8e8e8;border-radius:4px;font-size:13px;"><option value="">--默认--</option>${opts}</select></td>`;
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table></div>';
-  bd.innerHTML = html;
-}
-
-function playBell(filename) {
-  const a = new Audio('/static/sounds/' + filename);
-  a.play();
-  toast('试听中...');
-}
-
-async function uploadBell(input) {
-  if (!input.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', input.files[0]);
-  fd.append('name', input.files[0].name.replace(/\.[^.]+$/, ''));
-  fd.append('bell_type', 'custom');
-  const r = await fetch('/api/bells/upload', { method: 'POST', body: fd });
-  const d = await r.json();
-  toast(d.message || '上传成功');
-  loadBells();
-  input.value = '';
-}
-
-async function deleteBell(bid) {
-  if (!confirm('删除此铃声？')) return;
-  await api('/api/bells/' + bid, 'DELETE');
-  loadBells();
-}
-
-async function updateBinding(zid, btype, bid) {
-  await api('/api/bell_bindings', 'POST', { zone_id: zid, bell_type: btype, bell_id: parseInt(bid) || null });
-  toast('绑定已更新');
-}
-
-// ====== 节假日页 ======
-async function loadHolidays() {
-  const year = new Date().getFullYear();
-  const sel = document.getElementById('holidayYear');
-  if (!sel.innerHTML) {
-    sel.innerHTML = [year - 1, year, year + 1].map(y => `<option value="${y}" ${y === year ? 'selected' : ''}>${y}年</option>`).join('');
-  }
-  const y = parseInt(sel.value);
-  const d = await api('/api/holidays?year=' + y);
-  if (!d || !d.success) return;
-  
-  // 即将到来
-  const ul = document.getElementById('upcomingList');
-  ul.innerHTML = d.upcoming.map(h => `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #e8e8e8;font-size:14px;">
-    <span>${h.date} ${h.weekday} <span class="tag ${h.type === 'holiday' ? 'tag-red' : 'tag-green'}">${h.name}</span></span>
-    <span style="color:#fa8c16;font-weight:500;">${h.days_away}天后</span>
-  </div>`).join('') || '<div style="text-align:center;color:#8c8c8c;padding:40px;">近期无节假日</div>';
-  
-  // 全年列表
-  const tb = document.getElementById('holidayTable');
-  tb.innerHTML = d.holidays.map(h => {
-    const dt = new Date(h.date);
-    const wd = WEEKDAYS[dt.getDay() || 7];
-    const tc = h.type === 'holiday' ? 'tag-red' : 'tag-green';
-    const tl = h.type === 'holiday' ? '放假' : '补班';
-    const delBtn = h.custom ? `<button class="btn btn-danger btn-sm" onclick="deleteCustomHoliday(${h.id})">删除</button>` : '';
-    return `<tr>
-      <td>${h.date}</td>
-      <td>${wd}</td>
-      <td>${h.name}</td>
-      <td><span class="tag ${tc}">${tl}</span></td>
-      <td>${delBtn}</td>
-    </tr>`;
-  }).join('');
-}
-
-function showAddHoliday() {
-  showModal(`<div class="modal-title">添加自定义假期</div>
-    <div class="form-group">
-      <label class="form-label">日期</label>
-      <input type="date" class="form-control" id="customDate">
-    </div>
-    <div class="form-group">
-      <label class="form-label">名称</label>
-      <input type="text" class="form-control" id="customName" placeholder="如：校庆">
-    </div>
-    <div class="form-group">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-        <input type="checkbox" id="customIsHoliday" checked> 是放假（否则为补班）
-      </label>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" onclick="addCustomHoliday()">添加</button>
-      <button class="btn btn-outline" onclick="hideModal()">取消</button>
-    </div>`);
-}
-
-async function addCustomHoliday() {
-  await api('/api/holidays/custom', 'POST', {
-    date: document.getElementById('customDate').value,
-    name: document.getElementById('customName').value,
-    is_holiday: document.getElementById('customIsHoliday').checked
-  });
-  hideModal();
-  toast('已添加');
-  loadHolidays();
-}
-
-async function deleteCustomHoliday(hid) {
-  await api('/api/holidays/custom/' + hid, 'DELETE');
-  loadHolidays();
-}
-
-// ====== 设置页 ======
-async function loadSettings() {
-  const d = await api('/api/settings');
-  if (!d || !d.success) return;
-  document.getElementById('ntpServer').value = d.settings.ntp_server || 'ntp.aliyun.com';
-  document.getElementById('ntpTime').value = d.settings.ntp_daily_time || '06:00';
-  document.getElementById('ntpLast').textContent = d.settings.ntp_last_sync || '从未';
-  document.getElementById('dingtalkWebhook').value = d.settings.dingtalk_webhook || '';
-  document.getElementById('dingtalkEnabled').checked = d.settings.dingtalk_enabled === '1';
-}
-
-async function saveSettings(section) {
-  const data = {};
-  if (section === 'ntp') {
-    data.ntp_server = document.getElementById('ntpServer').value;
-    data.ntp_daily_time = document.getElementById('ntpTime').value;
-  } else if (section === 'dingtalk') {
-    data.dingtalk_webhook = document.getElementById('dingtalkWebhook').value;
-    data.dingtalk_enabled = document.getElementById('dingtalkEnabled').checked ? '1' : '0';
-  } else if (section === 'password') {
-    const pwd = document.getElementById('setPassword').value;
-    if (pwd) data.password = pwd;
-  }
-  await api('/api/settings', 'POST', data);
-  toast('设置已保存');
-}
-
-async function ntpSyncNow() {
-  const d = await api('/api/ntp/sync', 'POST');
-  if (d && d.success) {
-    toast('校时成功，偏差: ' + d.offset.toFixed(3) + '秒');
-    loadSettings();
-  } else {
-    toast('校时失败', true);
-  }
-}
-
-async function dingtalkTest() {
-  const d = await api('/api/dingtalk/test', 'POST');
-  toast(d && d.success ? '测试消息已发送' : '发送失败', !d || !d.success);
-}
-
-// ====== 日志页 ======
-async function loadLogs() {
-  const cat = document.getElementById('logCategory').value;
-  const d = await api('/api/logs?category=' + cat + '&per_page=100');
-  if (!d || !d.success) return;
-  const tb = document.getElementById('logTable');
-  tb.innerHTML = d.logs.map(l => {
-    const lc = l.level === 'ERROR' ? 'tag-red' : 'tag-blue';
-    return `<tr>
-      <td style="font-size:12px;white-space:nowrap;">${l.timestamp}</td>
-      <td><span class="tag ${lc}">${l.level}</span></td>
-      <td><span class="tag tag-blue">${l.category}</span></td>
-      <td>${l.message}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="4" style="text-align:center;color:#8c8c8c;padding:40px;">暂无日志</td></tr>';
-}
-
-// ====== 弹窗 ======
-function showModal(html) {
-  document.getElementById('modalContent').innerHTML = html;
-  document.getElementById('modal').classList.add('show');
-}
-
-function hideModal() {
-  document.getElementById('modal').classList.remove('show');
-}
-
-document.getElementById('modal').onclick = e => {
-  if (e.target === document.getElementById('modal')) hideModal();
-};
-
-// ====== 初始化 ======
-loadDashboard();
-setInterval(loadDashboard, 5000);
+        return {
+            navGroups, currentPage, currentTitle,
+            currentUser, status, zones, zoneColors, zoneIcons,
+            nextBell, broadcastZones, broadcastText, broadcastTemplates,
+            timeString, dateString,
+            startBroadcast, todayControl, doAction, quickRing, logout
+        };
+    }
+}).mount('#app');
 </script>
 </body>
 </html>

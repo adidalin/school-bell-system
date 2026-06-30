@@ -63,7 +63,13 @@ def _migrate_db():
         c.execute("ALTER TABLE schedule_tasks ADD COLUMN bell_id INTEGER DEFAULT 0")
         logger.info("数据库迁移: schedule_tasks添加bell_id列")
 
-    # 5. today_exceptions修改UNIQUE约束：改为(date, zone_id)
+    # 5. schedules表增加created_by字段（记录创建者）
+    sched_cols = [row[1] for row in c.execute("PRAGMA table_info(schedules)").fetchall()]
+    if "created_by" not in sched_cols:
+        c.execute("ALTER TABLE schedules ADD COLUMN created_by TEXT DEFAULT ''")
+        logger.info("数据库迁移: schedules添加created_by列")
+
+    # 6. today_exceptions修改UNIQUE约束：改为(date, zone_id)
     # SQLite不支持ALTER约束，通过重建表实现
     te_cols = [row[1] for row in c.execute("PRAGMA table_info(today_exceptions)").fetchall()]
     if "" not in [row[3] for row in c.execute("PRAGMA table_info(today_exceptions)").fetchall()

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>钢城智慧铃声系统 - 展示页面</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --primary:#1677ff;--primary-hover:#4096ff;--primary-bg:#e6f4ff;--primary-border:#91caff;
+  --primary-light:rgba(22,119,255,0.06);
+  --success:#52c41a;--success-bg:#f6ffed;--success-border:#b7eb8f;
+  --warning:#faad14;--warning-bg:#fffbe6;--warning-border:#ffe58f;
+  --error:#ff4d4f;--error-bg:#fff2f0;--error-border:#ffccc7;
+  --bg-layout:#f5f6fa;--bg-card:#ffffff;--bg-spot:#f8f9fb;--bg-hover:#f0f2f5;
+  --border:#e5e7eb;--border-secondary:#f0f1f3;
+  --text-primary:rgba(0,0,0,0.88);--text-secondary:rgba(0,0,0,0.65);--text-tertiary:rgba(0,0,0,0.45);--text-quaternary:rgba(0,0,0,0.25);
+  --sidebar-bg:#0f172a;--sidebar-w:232px;--header-h:60px;--radius:10px;--radius-sm:7px;--radius-xs:5px;
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'SF Mono','Cascadia Code','JetBrains Mono',Consolas,monospace;
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.04);--shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.06),0 2px 4px rgba(0,0,0,0.04);
+}
+html{font-size:14px}
+body{font-family:var(--font);background:var(--bg-layout);color:var(--text-primary);line-height:1.6;display:flex;min-height:100vh;-webkit-font-smoothing:antialiased}
+::selection{background:var(--primary);color:#fff}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:10px}
+
+/* 侧边栏 */
+.sidebar{width:var(--sidebar-w);background:linear-gradient(180deg,#0f172a 0%,#1e293b 100%);position:fixed;left:0;top:0;bottom:0;z-index:100;display:flex;flex-direction:column;box-shadow:4px 0 24px rgba(0,0,0,0.12)}
+.sidebar-brand{height:var(--header-h);display:flex;align-items:center;padding:0 22px;gap:12px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.sidebar-brand .logo-icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),#4096ff);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(22,119,255,0.35)}
+.sidebar-brand .logo-icon svg{width:19px;height:19px;fill:#fff}
+.sidebar-brand .brand-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:0.01em}
+.sidebar-nav{flex:1;padding:8px 0;overflow-y:auto}
+.nav-group{margin-bottom:4px}
+.nav-group-label{font-size:10.5px;font-weight:600;color:rgba(255,255,255,0.28);padding:18px 22px 6px;letter-spacing:0.08em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:0 12px;height:42px;color:rgba(255,255,255,0.55);cursor:pointer;transition:all .2s cubic-bezier(0.4,0,0.2,1);font-size:13.5px;margin:1px 10px;border-radius:var(--radius-sm);user-select:none;position:relative}
+.nav-item:hover{color:rgba(255,255,255,0.9);background:rgba(255,255,255,0.06)}
+.nav-item.active{color:#fff;background:rgba(22,119,255,0.25);font-weight:500;box-shadow:0 2px 8px rgba(22,119,255,0.15)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--primary);border-radius:0 3px 3px 0}
+.nav-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-icon{opacity:1}
+.nav-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-footer{padding:14px 22px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px rgba(82,196,26,0.6);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.5}}
+.status-label{font-size:12px;color:rgba(255,255,255,0.4)}
+
+/* 主内容区 */
+.main{flex:1;margin-left:var(--sidebar-w);display:flex;flex-direction:column;min-height:100vh}
+.header{height:var(--header-h);background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:50}
+.header-title{font-size:17px;font-weight:600;letter-spacing:-0.01em}
+.header-right{display:flex;align-items:center;gap:18px}
+.header-time{font-size:13px;color:var(--text-tertiary);font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500}
+.header-date{font-size:12px;color:var(--text-quaternary);font-weight:500}
+.content{flex:1;padding:28px 32px;max-width:1280px;width:100%}
+
+/* 页面切换 */
+.page{display:none}.page.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:translateY(0)}}
+
+/* 卡片 */
+.card{background:var(--bg-card);border-radius:var(--radius);padding:22px 26px;margin-bottom:18px;border:1px solid var(--border);box-shadow:var(--shadow-sm);transition:box-shadow .25s ease}
+.card:hover{box-shadow:var(--shadow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:15px;font-weight:600;letter-spacing:-0.01em}
+.card-desc{font-size:12px;color:var(--text-tertiary);margin-top:3px;font-weight:450}
+
+/* 统计卡片 */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:26px}
+.stat-card{background:var(--bg-card);border-radius:var(--radius);padding:22px;border:1px solid var(--border);box-shadow:var(--shadow-sm);transition:all .25s ease;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:0;transition:opacity .25s}
+.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.stat-card:hover::after{opacity:1}
+.stat-card:has(.stat-icon.blue)::after{background:linear-gradient(90deg,var(--primary),var(--primary-hover))}
+.stat-card:has(.stat-icon.green)::after{background:linear-gradient(90deg,var(--success),#73d13d)}
+.stat-card:has(.stat-icon.orange)::after{background:linear-gradient(90deg,var(--warning),#ffc53d)}
+.stat-card:has(.stat-icon.red)::after{background:linear-gradient(90deg,var(--error),#ff7875)}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.stat-icon svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8}
+.stat-icon.blue{background:var(--primary-bg);color:var(--primary)}
+.stat-icon.green{background:var(--success-bg);color:var(--success)}
+.stat-icon.red{background:var(--error-bg);color:var(--error)}
+.stat-icon.orange{background:var(--warning-bg);color:var(--warning)}
+.stat-label{font-size:12.5px;color:var(--text-tertiary);margin-bottom:6px;font-weight:500}
+.stat-value{font-size:26px;font-weight:700;letter-spacing:-0.03em;line-height:1.1}
+.stat-sub{font-size:12px;color:var(--text-tertiary);margin-top:6px}
+
+/* 按钮 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 16px;border:1px solid transparent;border-radius:var(--radius-xs);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s cubic-bezier(0.4,0,0.2,1);font-family:var(--font);white-space:nowrap;line-height:1.5;letter-spacing:0.01em}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 1px 2px rgba(22,119,255,0.2)}
+.btn-primary:hover{background:var(--primary-hover);box-shadow:0 2px 8px rgba(22,119,255,0.3)}
+.btn-danger{background:#fff;color:var(--error);border-color:var(--error-border);box-shadow:var(--shadow-sm)}
+.btn-danger:hover{background:var(--error-bg);border-color:var(--error);box-shadow:var(--shadow)}
+.btn-success{background:#fff;color:var(--success);border-color:var(--success-border);box-shadow:var(--shadow-sm)}
+.btn-success:hover{background:var(--success-bg);border-color:var(--success);box-shadow:var(--shadow)}
+.btn-warning{background:#fff;color:#d97706;border-color:var(--warning-border);box-shadow:var(--shadow-sm)}
+.btn-warning:hover{background:var(--warning-bg);box-shadow:var(--shadow)}
+.btn-ghost{background:transparent;color:var(--text-secondary);border:none}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--primary)}
+.btn-outline{background:#fff;color:var(--text-secondary);border-color:var(--border);box-shadow:var(--shadow-sm)}
+.btn-outline:hover{color:var(--primary);border-color:var(--primary);box-shadow:var(--shadow)}
+.btn-sm{padding:3px 10px;font-size:12px;border-radius:5px}
+
+/* 表单 */
+input[type="text"],input[type="password"],input[type="time"],input[type="date"],select{padding:7px 12px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:13px;color:var(--text-primary);font-family:var(--font);transition:all .2s ease;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(22,119,255,0.1)}
+select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:12.5px;font-weight:600;color:var(--text-primary);margin-bottom:7px;letter-spacing:0.01em}
+
+/* 标签 */
+.tag{display:inline-flex;align-items:center;padding:2px 10px;border-radius:5px;font-size:11.5px;font-weight:500;letter-spacing:0.01em}
+.tag-blue{background:var(--primary-bg);color:var(--primary);border:1px solid var(--primary-border)}
+.tag-green{background:var(--success-bg);color:#389e0d;border:1px solid var(--success-border)}
+.tag-red{background:var(--error-bg);color:#cf1322;border:1px solid var(--error-border)}
+.tag-orange{background:var(--warning-bg);color:#d48806;border:1px solid var(--warning-border)}
+
+/* 表格 */
+.table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--bg-spot);padding:12px 18px;text-align:left;font-weight:600;font-size:12px;color:var(--text-tertiary);border-bottom:1px solid var(--border);letter-spacing:0.02em;text-transform:uppercase}
+td{padding:13px 18px;border-bottom:1px solid var(--border-secondary);color:var(--text-secondary)}
+tbody tr{transition:all .15s ease}
+tbody tr:hover{background:var(--primary-light)}
+
+/* 区域行 */
+.zone-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border-secondary);gap:14px;flex-wrap:wrap;transition:background .15s}
+.zone-row:hover{background:var(--bg-spot)}
+.zone-row:last-child{border-bottom:none}
+.zone-row .zone-info{display:flex;align-items:center;gap:12px;min-width:140px}
+.zone-row .zone-info .zname{font-weight:600;font-size:14px}
+.zone-row .zone-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* 快捷操作 */
+.quick-row{display:flex;flex-wrap:wrap;gap:10px}
+.flex{display:flex}.gap-8{gap:8px}.gap-10{gap:10px}.items-center{align-items:center}
+
+/* 提示框 */
+.alert{padding:12px 18px;border-radius:var(--radius-sm);margin-bottom:18px;font-size:13px;display:flex;align-items:center;gap:8px}
+.alert-warning{background:var(--warning-bg);border:1px solid var(--warning-border);color:#d97706}
+
+/* 开关 */
+.switch{position:relative;width:38px;height:22px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch-track{position:absolute;cursor:pointer;inset:0;background:#d1d5db;border-radius:11px;transition:all .25s cubic-bezier(0.4,0,0.2,1)}
+.switch-track::before{content:'';position:absolute;height:18px;width:18px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:all .25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 1px 3px rgba(0,0,0,0.18)}
+.switch input:checked+.switch-track{background:var(--primary)}
+.switch input:checked+.switch-track::before{transform:translateX(16px)}
+
+/* 帮助块 */
+.help-block{margin-top:18px;padding:14px 18px;background:var(--bg-spot);border-radius:var(--radius-sm);font-size:12.5px;color:var(--text-secondary);line-height:1.9;border:1px solid var(--border-secondary)}
+.help-block strong{color:var(--text-primary);font-weight:600}
+.help-block em{color:var(--primary);font-style:normal;font-weight:600}
+
+/* Toast */
+.toast{position:fixed;top:24px;right:24px;padding:13px 22px;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-radius:var(--radius);box-shadow:var(--shadow-lg);border:1px solid var(--border);font-size:13px;z-index:9999;transform:translateX(130%);transition:transform .35s cubic-bezier(0.22,0.61,0.36,1);font-weight:500}
+.toast.show{transform:translateX(0)}
+.toast.error{border-left:3px solid var(--error);color:var(--error)}
+.toast.ok{border-left:3px solid var(--success);color:#389e0d}
+
+/* 响应式 */
+@media(max-width:768px){
+  .sidebar{display:none}.main{margin-left:0}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:12px}
+  .content{padding:16px}.card{padding:16px}
+  .stat-value{font-size:20px}
+  .zone-row{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<!-- 侧边栏 -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+    <div class="brand-name">钢城智慧铃声</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">概览</div>
+      <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span>系统总览</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">管理</div>
+      <div class="nav-item" onclick="showPage('schedules',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></span><span>排课管理</span></div>
+      <div class="nav-item" onclick="showPage('overrides',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span>预约铃声</span></div>
+      <div class="nav-item" onclick="showPage('zones',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M2 20h20M5 20V8l7-5 7 5v12"/><path d="M9 20v-5h6v5"/></svg></span><span>区域控制</span></div>
+      <div class="nav-item" onclick="showPage('bells',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span>铃声管理</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">配置</div>
+      <div class="nav-item" onclick="showPage('holidays',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span>节假日</span></div>
+      <div class="nav-item" onclick="showPage('schedule',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="3"/></svg></span><span>预约控制</span></div>
+      <div class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></span><span>系统设置</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">系统</div>
+      <div class="nav-item" onclick="showPage('logs',this)"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span><span>运行日志</span></div>
+    </div>
+  </nav>
+  <div class="sidebar-footer"><div class="status-dot"></div><span class="status-label">系统运行中</span></div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <h1 class="header-title" id="pageTitle">系统总览</h1>
+    <div class="header-right">
+      <div class="ntp-badge" style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:500;background:linear-gradient(135deg,#f0fdf4,#dcfce7);color:#16a34a;border:1px solid #bbf7d0"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>NTP已同步 (+0.003s)</div>
+      <span class="header-date" id="dateDisplay"></span>
+      <span class="header-time" id="clock">--:--:--</span>
+      <div style="margin-left:12px;padding-left:12px;border-left:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px;color:var(--text-secondary)">管理员 (admin)</span>
+        <button class="btn btn-sm btn-ghost" style="font-size:12px">退出</button>
+      </div>
+    </div>
+  </header>
+  <main class="content">
+
+    <!-- ===== 系统总览 ===== -->
+    <div class="page active" id="page-dashboard">
+      <!-- 快速广播 -->
+      <div class="card" style="border-left:4px solid var(--error);background:linear-gradient(135deg,#fff5f5,#fff)">
+        <div class="card-header">
+          <div><div class="card-title" style="color:var(--error)">快速广播</div><div class="card-desc">最高优先级 - 打断当前播放，直接广播到指定区域</div></div>
+          <span class="tag tag-green">就绪</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+          <div class="form-group" style="min-width:200px;flex:1">
+            <label class="form-label">广播区域</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"><input type="checkbox"> 教学楼</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"><input type="checkbox"> 操场</label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px"><input type="checkbox"> 宿舍楼</label>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-sm btn-outline">全选</button>
+            <button class="btn btn-sm btn-ghost">清空</button>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="form-label">广播内容</label>
+          <div style="display:flex;gap:8px">
+            <input type="text" placeholder="请输入广播内容..." style="flex:1">
+            <button class="btn btn-danger">立即广播</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+          <span style="font-size:12px;color:var(--text-tertiary);line-height:28px">常用：</span>
+          <button class="btn btn-sm btn-outline">请保持安静</button>
+          <button class="btn btn-sm btn-outline">考试开始，请考生停止答题</button>
+          <button class="btn btn-sm btn-outline">考试结束，请考生交卷</button>
+          <button class="btn btn-sm btn-outline">请班主任到会议室</button>
+          <button class="btn btn-sm btn-outline">请全体师生到操场集合</button>
+        </div>
+      </div>
+
+      <!-- 今日状态 -->
+      <div class="card" style="border-left:4px solid var(--primary)">
+        <div class="card-header"><div><div class="card-title" style="font-size:16px">今日状态</div><div class="card-desc">2026-06-30 周一</div></div></div>
+        <div class="zone-row">
+          <div class="zone-info"><span class="zname">教学楼</span><span class="tag tag-green">正常打铃</span></div>
+          <div class="zone-controls">
+            <button class="btn btn-success btn-sm">今日打铃</button>
+            <select style="width:140px;font-size:12px;padding:2px 6px"><option>默认课表</option><option>平日课表</option><option>考试课表</option></select>
+            <button class="btn btn-danger btn-sm">今日不打铃</button>
+            <button class="btn btn-ghost btn-sm">恢复自动</button>
+          </div>
+        </div>
+        <div class="zone-row">
+          <div class="zone-info"><span class="zname">操场</span><span class="tag tag-green">正常打铃</span></div>
+          <div class="zone-controls">
+            <button class="btn btn-success btn-sm">今日打铃</button>
+            <select style="width:140px;font-size:12px;padding:2px 6px"><option>默认课表</option></select>
+            <button class="btn btn-danger btn-sm">今日不打铃</button>
+            <button class="btn btn-ghost btn-sm">恢复自动</button>
+          </div>
+        </div>
+        <div class="zone-row">
+          <div class="zone-info"><span class="zname">宿舍楼</span><span class="tag tag-green">正常打铃</span></div>
+          <div class="zone-controls">
+            <button class="btn btn-success btn-sm">今日打铃</button>
+            <select style="width:140px;font-size:12px;padding:2px 6px"><option>默认课表</option></select>
+            <button class="btn btn-danger btn-sm">今日不打铃</button>
+            <button class="btn btn-ghost btn-sm">恢复自动</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 明日状态 -->
+      <div class="card" style="border-left:4px solid var(--warning)">
+        <div class="card-header"><div><div class="card-title" style="font-size:16px">明日状态</div><div class="card-desc">2026-07-01 周二</div></div></div>
+        <div class="zone-row">
+          <div class="zone-info"><span class="zname">教学楼</span><span class="tag tag-blue">自动</span></div>
+          <div class="zone-controls">
+            <button class="btn btn-success btn-sm">明日打铃</button>
+            <select style="width:140px;font-size:12px;padding:2px 6px"><option>默认课表</option></select>
+            <button class="btn btn-danger btn-sm">明日不打铃</button>
+            <button class="btn btn-ghost btn-sm">恢复自动</button>
+          </div>
+        </div>
+        <div class="zone-row">
+          <div class="zone-info"><span class="zname">操场</span><span class="tag tag-blue">自动</span></div>
+          <div class="zone-controls">
+            <button class="btn btn-success btn-sm">明日打铃</button>
+            <select style="width:140px;font-size:12px;padding:2px 6px"><option>默认课表</option></select>
+            <button class="btn btn-danger btn-sm">明日不打铃</button>
+            <button class="btn btn-ghost btn-sm">恢复自动</button>
+          </div>
+        </div>
+        <div class="zone-row">
+          <div class="zone-info"><span class="zname">宿舍楼</span><span class="tag tag-blue">自动</span></div>
+          <div class="zone-controls">
+            <button class="btn btn-success btn-sm">明日打铃</button>
+            <select style="width:140px;font-size:12px;padding:2px 6px"><option>默认课表</option></select>
+            <button class="btn btn-danger btn-sm">明日不打铃</button>
+            <button class="btn btn-ghost btn-sm">恢复自动</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 统计卡片 -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon blue"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 9h16M4 13h16M4 17h16"/></svg></div>
+          <div class="stat-label">当前课表</div>
+          <div class="stat-value">平日课表</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+          <div class="stat-label">系统状态</div>
+          <div class="stat-value" style="color:var(--success)">运行中</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+          <div class="stat-label">下次打铃</div>
+          <div class="stat-value" style="font-size:22px">08:00</div>
+          <div class="stat-sub">教学楼 第一节课</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+          <div class="stat-label">NTP校时</div>
+          <div class="stat-value" style="font-size:16px">已同步</div>
+          <div class="stat-sub">偏差 +0.003s</div>
+        </div>
+      </div>
+
+      <!-- 下次打铃 -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">下次打铃（按区域）</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <div style="background:var(--bg-spot);border-radius:var(--radius-sm);padding:14px;border:1px solid var(--primary-border)">
+            <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">教学楼</div>
+            <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--primary)">08:00</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">第一节课上课</div>
+          </div>
+          <div style="background:var(--bg-spot);border-radius:var(--radius-sm);padding:14px;border:1px solid var(--primary-border)">
+            <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">操场</div>
+            <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--primary)">09:50</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">课间操</div>
+          </div>
+          <div style="background:var(--bg-spot);border-radius:var(--radius-sm);padding:14px;border:1px solid var(--primary-border)">
+            <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">宿舍楼</div>
+            <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--primary)">06:30</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">起床铃</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 快捷操作 -->
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">快捷操作</div><div class="card-desc">全局打铃控制</div></div></div>
+        <div class="quick-row">
+          <button class="btn btn-danger">全局暂停</button>
+          <button class="btn btn-success">全局恢复</button>
+          <button class="btn btn-outline">全部停止</button>
+          <button class="btn btn-primary">上课铃</button>
+          <button class="btn btn-outline">下课铃</button>
+          <button class="btn btn-warning">紧急铃</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 排课管理 ===== -->
+    <div class="page" id="page-schedules">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">区域选择</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px">
+          <div class="form-group" style="min-width:180px">
+            <label class="form-label">选择区域</label>
+            <select style="width:100%"><option>教学楼</option><option>操场</option><option>宿舍楼</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">课表方案</div>
+          <div class="flex gap-8 items-center">
+            <select style="width:200px"><option>平日课表 [默认]</option><option>考试课表</option></select>
+            <button class="btn btn-primary">新建</button>
+            <button class="btn btn-success">设为默认</button>
+            <button class="btn btn-danger">删除</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">打铃任务</div>
+          <div class="flex gap-8 items-center">
+            <button class="btn btn-primary">添加任务</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>区域</th><th>时间</th><th>铃声名称</th><th>任务名称</th><th>适用日期</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><span class="tag tag-blue">教学楼</span></td><td><strong style="font-family:var(--mono)">07:50</strong></td><td><span class="tag tag-orange">预备铃</span></td><td>预备铃</td><td style="font-size:12px;color:var(--text-tertiary)">周一、周二、周三、周四、周五</td><td><button class="btn btn-primary btn-sm">编辑</button> <button class="btn btn-danger btn-sm">删除</button></td></tr>
+              <tr><td><span class="tag tag-blue">教学楼</span></td><td><strong style="font-family:var(--mono)">08:00</strong></td><td><span class="tag tag-orange">上课铃</span></td><td>第一节课上课</td><td style="font-size:12px;color:var(--text-tertiary)">周一、周二、周三、周四、周五</td><td><button class="btn btn-primary btn-sm">编辑</button> <button class="btn btn-danger btn-sm">删除</button></td></tr>
+              <tr><td><span class="tag tag-blue">教学楼</span></td><td><strong style="font-family:var(--mono)">08:45</strong></td><td><span class="tag tag-orange">下课铃</span></td><td>第一节课下课</td><td style="font-size:12px;color:var(--text-tertiary)">周一、周二、周三、周四、周五</td><td><button class="btn btn-primary btn-sm">编辑</button> <button class="btn btn-danger btn-sm">删除</button></td></tr>
+              <tr><td><span class="tag tag-blue">教学楼</span></td><td><strong style="font-family:var(--mono)">17:30</strong></td><td><span class="tag tag-orange">放学铃</span></td><td>放学铃</td><td style="font-size:12px;color:var(--text-tertiary)">周一、周二、周三、周四、周五</td><td><button class="btn btn-primary btn-sm">编辑</button> <button class="btn btn-danger btn-sm">删除</button></td></tr>
+              <tr><td><span class="tag tag-blue">宿舍楼</span></td><td><strong style="font-family:var(--mono)">06:30</strong></td><td><span class="tag tag-orange">起床铃</span></td><td>起床铃</td><td style="font-size:12px;color:var(--text-tertiary)">周一、周二、周三、周四、周五</td><td><button class="btn btn-primary btn-sm">编辑</button> <button class="btn btn-danger btn-sm">删除</button></td></tr>
+              <tr><td><span class="tag tag-blue">宿舍楼</span></td><td><strong style="font-family:var(--mono)">22:00</strong></td><td><span class="tag tag-orange">熄灯铃</span></td><td>熄灯铃</td><td style="font-size:12px;color:var(--text-tertiary)">周一、周二、周三、周四、周五</td><td><button class="btn btn-primary btn-sm">编辑</button> <button class="btn btn-danger btn-sm">删除</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 预约铃声 ===== -->
+    <div class="page" id="page-overrides">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">预约铃声</div><div class="card-desc">为特定课表任务临时替换铃声，到期自动生效，过期自动恢复</div></div>
+          <button class="btn btn-primary">+ 新建预约</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>区域</th><th>任务</th><th>时间</th><th>原铃声</th><th>预约铃声</th><th>有效期</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><span class="tag tag-blue">教学楼</span></td><td>第一节课上课</td><td style="font-family:var(--mono)">08:00</td><td>上课铃</td><td><span class="tag tag-orange">考试提示音</span></td><td style="font-size:12px">2026-07-01 ~ 2026-07-05</td><td><button class="btn btn-danger btn-sm">取消</button></td></tr>
+              <tr><td><span class="tag tag-blue">教学楼</span></td><td>放学铃</td><td style="font-family:var(--mono)">17:30</td><td>放学铃</td><td><span class="tag tag-orange">考试结束铃</span></td><td style="font-size:12px">2026-07-01 ~ 2026-07-05</td><td><button class="btn btn-danger btn-sm">取消</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 区域控制 ===== -->
+    <div class="page" id="page-zones">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:18px">区域管理</h3>
+        <button class="btn btn-primary">+ 新增区域</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">
+        <div class="card" style="border-top:3px solid var(--error)">
+          <div class="card-header"><div class="card-title">教学楼</div><span class="tag tag-green">已启用</span></div>
+          <div class="form-group"><label class="form-label">名称</label><input type="text" value="教学楼"></div>
+          <div class="form-group"><label class="form-label">音量 <strong>80%</strong></label><input type="range" min="0" max="100" value="80" style="width:100%;accent-color:var(--primary)"></div>
+          <div class="form-group"><label class="form-label">音频设备</label><select><option>音箱 (WDM-KS 直连)</option><option>默认输出</option></select></div>
+          <div class="form-group"><label class="form-label">默认课表</label><select><option value="0">跟随系统默认</option><option>平日课表</option><option>考试课表</option></select></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" checked><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用此区域</span></label></div>
+          <div class="quick-row"><button class="btn btn-danger">暂停</button><button class="btn btn-success">恢复</button><button class="btn btn-primary">测试打铃</button></div>
+        </div>
+        <div class="card" style="border-top:3px solid var(--primary)">
+          <div class="card-header"><div class="card-title">操场</div><span class="tag tag-green">已启用</span></div>
+          <div class="form-group"><label class="form-label">名称</label><input type="text" value="操场"></div>
+          <div class="form-group"><label class="form-label">音量 <strong>100%</strong></label><input type="range" min="0" max="100" value="100" style="width:100%;accent-color:var(--primary)"></div>
+          <div class="form-group"><label class="form-label">音频设备</label><select><option>默认输出</option></select></div>
+          <div class="form-group"><label class="form-label">默认课表</label><select><option value="0">跟随系统默认</option></select></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" checked><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用此区域</span></label></div>
+          <div class="quick-row"><button class="btn btn-danger">暂停</button><button class="btn btn-success">恢复</button><button class="btn btn-primary">测试打铃</button></div>
+        </div>
+        <div class="card" style="border-top:3px solid var(--success)">
+          <div class="card-header"><div class="card-title">宿舍楼</div><span class="tag tag-green">已启用</span></div>
+          <div class="form-group"><label class="form-label">名称</label><input type="text" value="宿舍楼"></div>
+          <div class="form-group"><label class="form-label">音量 <strong>60%</strong></label><input type="range" min="0" max="100" value="60" style="width:100%;accent-color:var(--primary)"></div>
+          <div class="form-group"><label class="form-label">音频设备</label><select><option>耳机 (WDM-KS 直连)</option><option>默认输出</option></select></div>
+          <div class="form-group"><label class="form-label">默认课表</label><select><option value="0">跟随系统默认</option></select></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" checked><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用此区域</span></label></div>
+          <div class="quick-row"><button class="btn btn-danger">暂停</button><button class="btn btn-success">恢复</button><button class="btn btn-primary">测试打铃</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 铃声管理 ===== -->
+    <div class="page" id="page-bells">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">铃声库</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary">上传铃声</button>
+            <button class="btn btn-success">+ 新建组合铃声</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>名称</th><th>类型</th><th>文件</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><strong>上课铃</strong></td><td><span class="tag tag-orange">上课铃</span></td><td style="font-size:12px;font-family:var(--mono)">class_start.wav</td><td><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm">试听</button><button class="btn btn-outline btn-sm">停止</button><button class="btn btn-success btn-sm">设为默认</button><button class="btn btn-danger btn-sm">删除</button></div></td></tr>
+              <tr><td><strong>下课铃</strong></td><td><span class="tag tag-orange">下课铃</span></td><td style="font-size:12px;font-family:var(--mono)">class_end.wav</td><td><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm">试听</button><button class="btn btn-outline btn-sm">停止</button><button class="btn btn-outline btn-sm">设为默认</button><button class="btn btn-danger btn-sm">删除</button></div></td></tr>
+              <tr><td><strong>预备铃</strong></td><td><span class="tag tag-orange">预备铃</span></td><td style="font-size:12px;font-family:var(--mono)">prepare.wav</td><td><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm">试听</button><button class="btn btn-outline btn-sm">停止</button><button class="btn btn-outline btn-sm">设为默认</button><button class="btn btn-danger btn-sm">删除</button></div></td></tr>
+              <tr style="background:var(--primary-light)"><td><strong>上课铃</strong> <span class="tag tag-blue">默认</span></td><td><span class="tag tag-orange">上课铃</span></td><td style="font-size:12px;font-family:var(--mono)">class_start.wav</td><td><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm">试听</button><button class="btn btn-outline btn-sm">停止</button><button class="btn btn-success btn-sm">设为默认</button><button class="btn btn-danger btn-sm">删除</button></div></td></tr>
+              <tr><td><strong>考试结束铃</strong></td><td><span class="tag tag-green">组合铃声</span></td><td style="font-size:12px;font-family:var(--mono)">组合(3个)</td><td><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm">试听</button><button class="btn btn-outline btn-sm">停止</button><button class="btn btn-outline btn-sm">设为默认</button><button class="btn btn-danger btn-sm">删除</button></div></td></tr>
+              <tr><td><strong>眼保健操</strong></td><td><span class="tag tag-green">组合铃声</span></td><td style="font-size:12px;font-family:var(--mono)">组合(2个)</td><td><div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm">试听</button><button class="btn btn-outline btn-sm">停止</button><button class="btn btn-outline btn-sm">设为默认</button><button class="btn btn-danger btn-sm">删除</button></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">提示音管理</div><div class="card-desc">用于组合铃声的前置提示音（如：叮咚、警报）</div></div><button class="btn btn-primary">上传提示音</button></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;padding:12px">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-spot);border:1px solid var(--border);border-radius:6px"><span style="font-size:13px">叮咚</span><button class="btn btn-sm btn-primary">试听</button><button class="btn btn-sm btn-outline">停止</button><button class="btn btn-sm btn-danger">删除</button></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-spot);border:1px solid var(--border);border-radius:6px"><span style="font-size:13px">警报</span><button class="btn btn-sm btn-primary">试听</button><button class="btn btn-sm btn-outline">停止</button><button class="btn btn-sm btn-danger">删除</button></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-spot);border:1px solid var(--border);border-radius:6px"><span style="font-size:13px">钟声</span><button class="btn btn-sm btn-primary">试听</button><button class="btn btn-sm btn-outline">停止</button><button class="btn btn-sm btn-danger">删除</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">区域铃声绑定</div><button class="btn btn-primary">保存绑定</button></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>区域</th><th>上课</th><th>下课</th><th>预备</th><th>课间操</th><th>午餐</th><th>放学</th><th>紧急</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:600">教学楼</td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option><option>上课铃</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td></tr>
+              <tr><td style="font-weight:600">操场</td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td></tr>
+              <tr><td style="font-weight:600">宿舍楼</td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td><td><select style="font-size:11px;max-width:120px"><option>系统默认</option></select></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:12px;font-size:12px;color:var(--text-tertiary)">选择每个区域在各种铃声类型下使用的具体铃声文件，点击"保存绑定"生效</div>
+      </div>
+    </div>
+
+    <!-- ===== 节假日 ===== -->
+    <div class="page" id="page-holidays">
+      <div class="card">
+        <div class="card-header"><div class="card-title">即将到来</div><button class="btn btn-primary">同步节假日</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-secondary);font-size:13px"><span>2026-07-01 周二 <span class="tag tag-red">建党节</span></span><span style="color:var(--warning);font-weight:600;font-size:12px">1天后</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-secondary);font-size:13px"><span>2026-08-01 周五 <span class="tag tag-red">建军节</span></span><span style="color:var(--warning);font-weight:600;font-size:12px">32天后</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font-size:13px"><span>2026-10-01 周三 <span class="tag tag-red">国庆节</span></span><span style="color:var(--warning);font-weight:600;font-size:12px">93天后</span></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">全年节假日</div><div class="flex gap-8 items-center"><select style="width:100px"><option>2026年</option></select><button class="btn btn-primary">添加节日</button></div></div>
+        <div class="table-wrap" style="max-height:480px;overflow-y:auto">
+          <table>
+            <thead><tr><th>日期</th><th>星期</th><th>名称</th><th>类型</th><th>打铃</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:var(--mono)">2026-01-01</td><td>周四</td><td>元旦</td><td><span class="tag tag-red">放假</span></td><td><span class="tag tag-red">不打铃</span></td><td><span style="color:var(--text-quaternary);font-size:12px">官方</span></td></tr>
+              <tr><td style="font-family:var(--mono)">2026-01-29</td><td>周三</td><td>春节</td><td><span class="tag tag-red">放假</span></td><td><span class="tag tag-red">不打铃</span></td><td><span style="color:var(--text-quaternary);font-size:12px">官方</span></td></tr>
+              <tr><td style="font-family:var(--mono)">2026-04-05</td><td>周六</td><td>清明节</td><td><span class="tag tag-red">放假</span></td><td><span class="tag tag-red">不打铃</span></td><td><span style="color:var(--text-quaternary);font-size:12px">官方</span></td></tr>
+              <tr><td style="font-family:var(--mono)">2026-05-01</td><td>周四</td><td>劳动节</td><td><span class="tag tag-red">放假</span></td><td><span class="tag tag-red">不打铃</span></td><td><span style="color:var(--text-quaternary);font-size:12px">官方</span></td></tr>
+              <tr><td style="font-family:var(--mono)">2026-06-25</td><td>周三</td><td>端午节</td><td><span class="tag tag-red">放假</span></td><td><span class="tag tag-red">不打铃</span></td><td><span style="color:var(--text-quaternary);font-size:12px">官方</span></td></tr>
+              <tr><td style="font-family:var(--mono)">2026-10-01</td><td>周三</td><td>国庆节</td><td><span class="tag tag-red">放假</span></td><td><span class="tag tag-red">不打铃</span></td><td><span style="color:var(--text-quaternary);font-size:12px">官方</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 预约控制 ===== -->
+    <div class="page" id="page-schedule">
+      <div class="card">
+        <div class="card-header"><div class="card-title">新建预约</div></div>
+        <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap">
+          <div class="form-group" style="min-width:140px"><label class="form-label">日期</label><input type="date" value="2026-07-01"></div>
+          <div class="form-group" style="min-width:120px"><label class="form-label">区域</label><select><option>教学楼</option><option>操场</option><option>宿舍楼</option></select></div>
+          <div class="form-group" style="min-width:120px"><label class="form-label">操作</label><select><option>不打铃（关）</option><option>打铃（开）</option></select></div>
+          <div class="form-group" style="min-width:140px"><label class="form-label">课表</label><select><option>默认课表</option><option>平日课表</option><option>考试课表</option></select></div>
+          <div class="form-group" style="min-width:200px"><label class="form-label">原因说明</label><input type="text" placeholder="例如：考试调休"></div>
+          <button class="btn btn-primary">添加预约</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">预约列表</div><div class="card-desc">未来日期的铃声开关预约</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>日期</th><th>区域</th><th>操作</th><th>课表</th><th>原因</th><th>提醒</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:var(--mono)">2026-07-04</td><td>教学楼</td><td><span class="tag tag-red">不打铃</span></td><td>默认</td><td>期末考试</td><td><span class="tag tag-blue">已开启</span></td><td><button class="btn btn-danger btn-sm">删除</button></td></tr>
+              <tr><td style="font-family:var(--mono)">2026-07-05</td><td>教学楼</td><td><span class="tag tag-red">不打铃</span></td><td>默认</td><td>期末考试</td><td><span class="tag tag-blue">已开启</span></td><td><button class="btn btn-danger btn-sm">删除</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 系统设置 ===== -->
+    <div class="page" id="page-settings">
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">节假日数据源</div><div class="card-desc">设置节假日查询API地址</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">节假日API地址</label><input type="text" value="https://timor.tech/api/holiday/year/{}"></div>
+          <button class="btn btn-success">保存</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">NTP 网络校时</div><div class="card-desc">每日自动校准系统时钟</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">NTP服务器</label><input type="text" value="ntp.aliyun.com"></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox" checked><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用每日自动校时</span></label></div>
+          <div class="form-group"><label class="form-label">上次校时</label><div style="font-size:13px;color:var(--text-tertiary);font-family:var(--mono)">2026-06-30 06:00:00</div></div>
+          <div class="form-group"><label class="form-label">时间偏差</label><div style="font-size:13px;color:var(--text-tertiary)">+0.003s</div></div>
+          <div class="flex gap-8"><button class="btn btn-primary">立即校时</button><button class="btn btn-success">保存</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">钉钉机器人告警</div><div class="card-desc">异常时通知 + 每日8:00明日状态提醒</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">Webhook 地址</label><input type="text" placeholder="https://oapi.dingtalk.com/robot/send?access_token=..."></div>
+          <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><div class="switch"><input type="checkbox"><span class="switch-track"></span></div><span style="font-size:13px;color:var(--text-secondary)">启用钉钉告警</span></label></div>
+          <div class="flex gap-8"><button class="btn btn-primary">发送测试</button><button class="btn btn-success">保存</button></div>
+          <div class="help-block"><strong>配置步骤：</strong><br>1. 打开钉钉群聊 → 右上角<strong>"..."</strong> → <strong>群设置</strong><br>2. 点击<strong>智能群助手</strong> → <strong>添加机器人</strong> → <strong>自定义</strong><br>3. 安全设置选择<strong>"自定义关键词"</strong>，添加关键词<em>钢城智慧铃声</em></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">TTS 语音设置</div><div class="card-desc">广播和组合铃声使用的语音合成引擎</div></div></div>
+        <div style="max-width:500px">
+          <div class="form-group">
+            <label class="form-label">语音引擎</label>
+            <select><option>Edge TTS (微软) - 免费，无需API Key</option><option>小米TTS (MiMo) - 高品质，需要API Key</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">默认音色</label>
+            <select><option>Chloe (女) 甜美温柔</option><option>Mia (女) 优雅知性</option><option>Milo (男) 温暖磁性</option><option>Dean (男) 浑厚低沉</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">试听</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" value="现在是上课时间，请同学们准备上课" style="flex:1">
+              <button class="btn btn-primary">试听</button>
+            </div>
+          </div>
+          <div class="flex gap-8"><button class="btn btn-success">保存TTS设置</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><div class="card-title">访问密码</div><div class="card-desc">留空则不需要密码</div></div></div>
+        <div style="max-width:420px">
+          <div class="form-group"><label class="form-label">密码</label><input type="password" placeholder="留空不设密码"></div>
+          <button class="btn btn-success">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 运行日志 ===== -->
+    <div class="page" id="page-logs">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">运行日志</div>
+          <div class="flex gap-8 items-center">
+            <select style="width:110px"><option>全部</option><option>打铃</option><option>手动</option><option>例外</option><option>系统</option><option>设置</option></select>
+            <button class="btn btn-ghost">刷新</button>
+          </div>
+        </div>
+        <div class="table-wrap" style="max-height:520px;overflow-y:auto">
+          <table>
+            <thead><tr><th>时间</th><th>级别</th><th>类别</th><th>信息</th></tr></thead>
+            <tbody>
+              <tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">2026-06-30 08:00:00</td><td><span class="tag tag-blue">INFO</span></td><td><span class="tag tag-blue">bell</span></td><td>打铃: 教学楼 第一节课上课</td></tr>
+              <tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">2026-06-30 08:00:00</td><td><span class="tag tag-blue">INFO</span></td><td><span class="tag tag-blue">bell</span></td><td>打铃: 宿舍楼 起床铃</td></tr>
+              <tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">2026-06-30 07:50:00</td><td><span class="tag tag-blue">INFO</span></td><td><span class="tag tag-blue">bell</span></td><td>打铃: 教学楼 预备铃</td></tr>
+              <tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">2026-06-30 06:30:00</td><td><span class="tag tag-blue">INFO</span></td><td><span class="tag tag-blue">system</span></td><td>系统状态: 运行中</td></tr>
+              <tr><td style="font-size:12px;white-space:nowrap;font-family:var(--mono);color:var(--text-tertiary)">2026-06-30 06:00:00</td><td><span class="tag tag-blue">INFO</span></td><td><span class="tag tag-blue">ntp</span></td><td>每日校时成功，偏差+0.003秒</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var pages = ['dashboard', 'schedules', 'overrides', 'zones', 'bells', 'holidays', 'schedule', 'settings', 'logs'];
+var titles = {dashboard:'系统总览',schedules:'排课管理',overrides:'预约铃声',zones:'区域控制',bells:'铃声管理',holidays:'节假日',schedule:'预约控制',settings:'系统设置',logs:'运行日志'};
+
+function showPage(pg, el) {
+  pages.forEach(function(p) {
+    var pageEl = document.getElementById('page-' + p);
+    if (pageEl) pageEl.style.display = p === pg ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.classList.remove('active');
+  });
+  if (el) el.classList.add('active');
+  document.getElementById('pageTitle').textContent = titles[pg] || pg;
+}
+
+function updateClock() {
+  var now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('zh-CN', {hour12: false});
+  document.getElementById('dateDisplay').textContent = now.toLocaleDateString('zh-CN', {year:'numeric', month:'long', day:'numeric', weekday:'long'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show';
+  setTimeout(function() { t.className = 'toast'; }, 2500);
+}
+</script>
+
+</body>
+</html>

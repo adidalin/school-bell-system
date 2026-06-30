@@ -15,27 +15,45 @@ body{font-family:"Microsoft YaHei",sans-serif;background:#0f172a;color:#e2e8f0;m
 .login-box button{width:100%;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:1em;cursor:pointer;font-weight:bold}
 .login-box button:hover{background:#2563eb}
 .login-box .error{color:#ef4444;font-size:.85em;margin-top:10px;display:none}
+.login-box .hint{font-size:.75em;color:#64748b;margin-top:16px}
 </style>
 </head>
 <body>
 <div class="login-box">
   <h1>🔔 钢城智慧铃声系统</h1>
-  <div class="sub">请输入密码继续</div>
-  <input type="password" id="pwd" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()">
-  <button onclick="doLogin()">进入系统</button>
+  <div class="sub">请输入账号密码继续</div>
+  <input type="text" id="username" placeholder="用户名" onkeydown="if(event.key==='Enter')document.getElementById('pwd').focus()">
+  <input type="password" id="pwd" placeholder="密码" onkeydown="if(event.key==='Enter')doLogin()">
+  <button onclick="doLogin()">登录</button>
   <div class="error" id="errMsg"></div>
+  <div class="hint">admin:管理员 | chuzhong:初中 | xiaoxue:小学</div>
 </div>
 <script>
 async function doLogin(){
+  const username=document.getElementById('username').value.trim();
   const pwd=document.getElementById('pwd').value;
-  const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})});
-  const d=await r.json();
-  if(d.success){
-    if(d.message!=='未设置密码')document.cookie='auth_token='+d.message+';max-age='+(86400*30);
-    window.location.href='/';
-  }else{
+  if(!username||!pwd){
     const e=document.getElementById('errMsg');
-    e.textContent=d.message||'密码错误';e.style.display='block';
+    e.textContent='请输入用户名和密码';e.style.display='block';
+    return;
+  }
+  try{
+    const r=await fetch('/api/user/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:username,password:pwd})
+    });
+    const d=await r.json();
+    if(d.success){
+      document.cookie='auth_user='+d.user.username+';max-age='+(86400*30);
+      window.location.href='/';
+    }else{
+      const e=document.getElementById('errMsg');
+      e.textContent=d.message||'登录失败';e.style.display='block';
+    }
+  }catch(err){
+    const e=document.getElementById('errMsg');
+    e.textContent='网络错误';e.style.display='block';
   }
 }
 </script>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钢城智慧铃声 - StreamEx Style</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #F1F5F9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .gradient-blue { background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); }
+        .gradient-orange { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); }
+        .gradient-green { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+        .gradient-red { background: linear-gradient(135deg, #F43F5E 0%, #E11D48 100%); }
+        .soft-shadow { box-shadow: 0 12px 36px rgba(148, 163, 184, 0.15); }
+        .nav-item.active {
+            background: #EFF6FF;
+            color: #2563EB;
+            font-weight: 600;
+        }
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 20px;
+            background: #2563EB;
+            border-radius: 0 4px 4px 0;
+        }
+        /* 隐藏滚动条但保留滚动功能 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    </style>
+</head>
+<body class="h-screen w-screen p-4 lg:p-6 overflow-hidden flex items-center justify-center">
+
+<div id="app" class="w-full h-full max-w-[1600px] flex rounded-[32px] bg-white soft-shadow border border-slate-100 overflow-hidden relative">
+    
+    <aside class="w-64 bg-slate-50 flex flex-col border-r border-slate-100 flex-shrink-0">
+        <div class="h-20 flex items-center px-6 gap-3 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-xl gradient-blue flex items-center justify-center shadow-lg shadow-blue-500/30 text-white font-bold text-xl">
+                GC
+            </div>
+            <div>
+                <h1 class="font-bold text-slate-800 tracking-tight leading-tight">钢城智慧铃声</h1>
+                <p class="text-[10px] text-slate-400 font-medium tracking-wider">SMART BELL SYSTEM</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-6">
+            <div v-for="(group, idx) in navGroups" :key="idx">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-3">{{ group.label }}</div>
+                <div class="space-y-1">
+                    <button v-for="item in group.items" :key="item.id" 
+                            @click="currentPage = item.id"
+                            :class="['w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors relative', 
+                                    currentPage === item.id ? 'active' : 'text-slate-500 hover:bg-slate-100']">
+                        <span class="text-lg" v-html="item.icon"></span>
+                        {{ item.name }}
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-slate-100">
+            <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span class="text-xs font-semibold text-emerald-600">系统运行中</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-white">
+        <header class="h-20 px-8 flex items-center justify-between border-b border-slate-100 glass-panel z-10">
+            <h2 class="text-xl font-bold text-slate-800 tracking-tight">{{ currentTitle }}</h2>
+            
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600">
+                    <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    NTP 已同步 <span class="text-emerald-500 ml-1">+0.003s</span>
+                </div>
+                
+                <div class="text-right">
+                    <div class="text-lg font-bold text-slate-800 font-mono leading-none tracking-tight">{{ timeString }}</div>
+                    <div class="text-[11px] text-slate-400 font-medium mt-1">{{ dateString }}</div>
+                </div>
+
+                <div class="w-px h-8 bg-slate-200"></div>
+
+                <div class="flex items-center gap-3 cursor-pointer group">
+                    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80" class="w-9 h-9 rounded-full object-cover border-2 border-slate-100 group-hover:border-blue-500 transition-colors">
+                    <div class="hidden md:block text-sm font-semibold text-slate-700 group-hover:text-blue-600">Admin</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8">
+            <div v-show="currentPage === 'dashboard'" class="space-y-8 animate-fade-in">
+                
+                <div class="grid grid-cols-4 gap-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center text-xl">📅</div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">当前课表</p>
+                                <p class="text-xl font-bold text-slate-800 mt-0.5">平日课表</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-xl">🚀</div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">系统状态</p>
+                                <p class="text-xl font-bold text-emerald-600 mt-0.5">运行中</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center text-xl">🔔</div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">下次打铃 (教学楼)</p>
+                                <p class="text-xl font-bold text-slate-800 font-mono mt-0.5">08:00</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center text-xl">📡</div>
+                            <div>
+                                <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">在线终端</p>
+                                <p class="text-xl font-bold text-slate-800 mt-0.5">3 / 3 正常</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-8">
+                    <div class="col-span-2 bg-white rounded-3xl p-6 border border-red-100 soft-shadow relative overflow-hidden">
+                        <div class="absolute -right-10 -top-10 w-40 h-40 bg-red-50 rounded-full blur-3xl opacity-50"></div>
+                        
+                        <div class="flex justify-between items-center mb-6 relative">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center animate-pulse">🎙️</div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-lg">快速广播 (TTS)</h3>
+                                    <p class="text-xs text-slate-400">最高优先级，打断当前播放</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold border border-emerald-100">通道就绪</span>
+                        </div>
+
+                        <div class="space-y-4 relative">
+                            <div class="flex items-center gap-4">
+                                <span class="text-sm font-semibold text-slate-600 w-16">广播目标</span>
+                                <div class="flex gap-2">
+                                    <label class="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-blue-400 transition-colors bg-slate-50">
+                                        <input type="checkbox" checked class="rounded text-blue-600 w-4 h-4 accent-blue-600">
+                                        <span class="text-sm font-medium text-slate-700">教学楼</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-blue-400 transition-colors bg-slate-50">
+                                        <input type="checkbox" checked class="rounded text-blue-600 w-4 h-4 accent-blue-600">
+                                        <span class="text-sm font-medium text-slate-700">操场</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 cursor-pointer hover:border-blue-400 transition-colors bg-slate-50">
+                                        <input type="checkbox" class="rounded text-blue-600 w-4 h-4 accent-blue-600">
+                                        <span class="text-sm font-medium text-slate-700">宿舍楼</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-4">
+                                <span class="text-sm font-semibold text-slate-600 w-16">播报内容</span>
+                                <div class="flex-1 flex gap-3">
+                                    <input type="text" placeholder="请输入需要紧急播报的文字内容..." class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm">
+                                    <button class="px-6 py-2.5 gradient-red text-white font-bold rounded-xl shadow-lg shadow-red-500/30 hover:opacity-90 transition-opacity whitespace-nowrap">
+                                        立即广播
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-4 pt-2">
+                                <span class="text-xs font-semibold text-slate-400 w-16">快捷模板</span>
+                                <div class="flex flex-wrap gap-2">
+                                    <button class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium hover:bg-slate-200 transition-colors">请保持安静</button>
+                                    <button class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium hover:bg-slate-200 transition-colors">考试开始，请停止答题</button>
+                                    <button class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium hover:bg-slate-200 transition-colors">请全体师生到操场集合</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-1 bg-slate-800 rounded-3xl p-6 text-white soft-shadow flex flex-col justify-between relative overflow-hidden">
+                        <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-500 rounded-full blur-3xl opacity-20"></div>
+                        <div>
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">GLOBAL CONTROLS / 全局干预</h3>
+                            
+                            <div class="space-y-3">
+                                <button class="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors backdrop-blur-sm border border-white/5">
+                                    <span class="font-medium text-sm">⏸️ 全局暂停打铃</span>
+                                    <span class="text-xs bg-slate-700 px-2 py-1 rounded-md text-slate-300">临时静音</span>
+                                </button>
+                                <button class="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors backdrop-blur-sm border border-white/5">
+                                    <span class="font-medium text-sm text-red-400">🛑 停止所有播放</span>
+                                    <span class="text-xs bg-red-500/20 px-2 py-1 rounded-md text-red-300">强制打断</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 pt-6 border-t border-white/10">
+                            <h4 class="text-[10px] text-slate-400 mb-3">手动触发测试铃声</h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button class="py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-xs font-bold transition-colors shadow-sm">上课铃</button>
+                                <button class="py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-xs font-bold transition-colors shadow-sm">下课铃</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-end mb-4 px-1">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-lg">区域控制台</h3>
+                            <p class="text-xs text-slate-400">今日与明日打铃策略管理</p>
+                        </div>
+                        <button class="text-sm font-semibold text-blue-600 hover:text-blue-700">进入区域管理 &rarr;</button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-6">
+                        <div class="gradient-blue p-6 rounded-3xl text-white soft-shadow relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+                            <div class="absolute -right-4 -top-4 text-6xl opacity-20 transform rotate-12">🏫</div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <h4 class="text-xl font-bold">教学楼</h4>
+                                    <span class="px-2 py-1 bg-white/20 rounded-md text-[10px] font-bold">已启用</span>
+                                </div>
+                                <p class="text-sm text-blue-100 font-medium">当前课表: 平日课表</p>
+                            </div>
+                            
+                            <div class="mt-4 bg-black/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
+                                <div class="flex justify-between text-xs mb-2">
+                                    <span class="text-blue-100">今日: <strong class="text-white">正常打铃</strong></span>
+                                    <span class="text-blue-100">明日: <strong class="text-white">自动</strong></span>
+                                </div>
+                                <div class="flex gap-2 mt-3">
+                                    <button class="flex-1 py-1.5 bg-white text-blue-600 text-xs font-bold rounded-lg shadow-sm hover:bg-slate-50 transition-colors">今日不打铃</button>
+                                    <button class="flex-1 py-1.5 bg-blue-600/50 hover:bg-blue-600 text-white border border-blue-400 text-xs font-bold rounded-lg transition-colors">恢复自动</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gradient-orange p-6 rounded-3xl text-white soft-shadow relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+                            <div class="absolute -right-4 -top-4 text-6xl opacity-20 transform rotate-12">🏃</div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <h4 class="text-xl font-bold">操场</h4>
+                                    <span class="px-2 py-1 bg-white/20 rounded-md text-[10px] font-bold">已启用</span>
+                                </div>
+                                <p class="text-sm text-orange-100 font-medium">当前课表: 默认课表</p>
+                            </div>
+                            
+                            <div class="mt-4 bg-black/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
+                                <div class="flex justify-between text-xs mb-2">
+                                    <span class="text-orange-100">今日: <strong class="text-white">正常打铃</strong></span>
+                                    <span class="text-orange-100">明日: <strong class="text-white">自动</strong></span>
+                                </div>
+                                <div class="flex gap-2 mt-3">
+                                    <button class="flex-1 py-1.5 bg-white text-orange-600 text-xs font-bold rounded-lg shadow-sm hover:bg-slate-50 transition-colors">今日不打铃</button>
+                                    <button class="flex-1 py-1.5 bg-orange-600/50 hover:bg-orange-600 text-white border border-orange-400 text-xs font-bold rounded-lg transition-colors">恢复自动</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gradient-green p-6 rounded-3xl text-white soft-shadow relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+                            <div class="absolute -right-4 -top-4 text-6xl opacity-20 transform rotate-12">🏢</div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <h4 class="text-xl font-bold">宿舍楼</h4>
+                                    <span class="px-2 py-1 bg-white/20 rounded-md text-[10px] font-bold">已启用</span>
+                                </div>
+                                <p class="text-sm text-emerald-100 font-medium">当前课表: 默认课表</p>
+                            </div>
+                            
+                            <div class="mt-4 bg-black/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
+                                <div class="flex justify-between text-xs mb-2">
+                                    <span class="text-emerald-100">今日: <strong class="text-white">正常打铃</strong></span>
+                                    <span class="text-emerald-100">明日: <strong class="text-white">自动</strong></span>
+                                </div>
+                                <div class="flex gap-2 mt-3">
+                                    <button class="flex-1 py-1.5 bg-white text-emerald-600 text-xs font-bold rounded-lg shadow-sm hover:bg-slate-50 transition-colors">今日不打铃</button>
+                                    <button class="flex-1 py-1.5 bg-emerald-600/50 hover:bg-emerald-600 text-white border border-emerald-400 text-xs font-bold rounded-lg transition-colors">恢复自动</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div v-show="currentPage !== 'dashboard'" class="h-full flex items-center justify-center flex-col animate-fade-in text-slate-400">
+                <div class="text-6xl mb-4">🚧</div>
+                <h3 class="text-xl font-bold text-slate-700">正在构建 {{ currentTitle }} 模块</h3>
+                <p class="text-sm mt-2">已应用 StreamEx 风格框架，具体表单内容可参考 Dashboard 样式填充</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+    createApp({
+        setup() {
+            // 导航配置
+            const navGroups = [
+                {
+                    label: '概览 Overview',
+                    items: [
+                        { id: 'dashboard', name: '系统总览', icon: '◱' }
+                    ]
+                },
+                {
+                    label: '管理 Management',
+                    items: [
+                        { id: 'schedules', name: '排课管理', icon: '📅' },
+                        { id: 'overrides', name: '预约铃声', icon: '⏳' },
+                        { id: 'zones', name: '区域控制', icon: '🎛️' },
+                        { id: 'bells', name: '铃声管理', icon: '🎵' }
+                    ]
+                },
+                {
+                    label: '配置 Configuration',
+                    items: [
+                        { id: 'holidays', name: '节假日同步', icon: '🏖️' },
+                        { id: 'schedule', name: '预约控制', icon: '⚙️' },
+                        { id: 'settings', name: '系统设置', icon: '🔧' }
+                    ]
+                },
+                {
+                    label: '系统 System',
+                    items: [
+                        { id: 'logs', name: '运行日志', icon: '📋' }
+                    ]
+                }
+            ];
+
+            const currentPage = ref('dashboard');
+            
+            const currentTitle = computed(() => {
+                for(let group of navGroups) {
+                    const item = group.items.find(i => i.id === currentPage.value);
+                    if (item) return item.name;
+                }
+                return '系统总览';
+            });
+
+            // 实时时钟逻辑
+            const timeString = ref('');
+            const dateString = ref('');
+            let timer = null;
+
+            const updateClock = () => {
+                const now = new Date();
+                timeString.value = now.toLocaleTimeString('zh-CN', { hour12: false });
+                dateString.value = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+            };
+
+            onMounted(() => {
+                updateClock();
+                timer = setInterval(updateClock, 1000);
+            });
+
+            onUnmounted(() => {
+                if (timer) clearInterval(timer);
+            });
+
+            return {
+                navGroups,
+                currentPage,
+                currentTitle,
+                timeString,
+                dateString
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ import sys
 import json
 import logging
 import hashlib
+import sqlite3
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from io import BytesIO
@@ -36,12 +37,64 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB上传限制
 app.config['SECRET_KEY'] = 'school-bell-v4-secret'
 
 
-# ====== 简单密码保护 ======
+# ====== 用户认证 ======
+def get_current_user():
+    """获取当前登录用户信息"""
+    username = request.headers.get("X-Auth-User", "") or request.cookies.get("auth_user", "")
+    if not username:
+        return None
+    
+    pb_db = os.path.join("pocketbase", "pb_data", "data.db")
+    if not os.path.exists(pb_db):
+        return None
+    
+    try:
+        conn = sqlite3.connect(pb_db)
+        conn.row_factory = sqlite3.Row
+        user = conn.execute(
+            "SELECT email, name, zone_scope FROM app_users WHERE email=?",
+            (username,)
+        ).fetchone()
+        conn.close()
+        
+        if user:
+            return {
+                "username": user["email"],
+                "display_name": user["name"],
+                "zone_scope": user["zone_scope"]
+            }
+    except Exception as e:
+        logger.error(f"读取PB数据库失败: {e}")
+    
+    return None
+
+
 def check_auth():
-    """检查是否需要密码认证"""
+    """检查认证"""
+    # 检查新用户系统
+    user = get_current_user()
+    if user:
+        return True
+    
+    # 检查是否有用户账号存在
+    pb_db = os.path.join("pocketbase", "pb_data", "data.db")
+    if os.path.exists(pb_db):
+        try:
+            conn = sqlite3.connect(pb_db)
+            cursor = conn.cursor()
+            user_count = cursor.execute("SELECT COUNT(*) FROM app_users").fetchone()[0]
+            conn.close()
+            
+            # 如果有用户账号，必须登录
+            if user_count > 0:
+                return False
+        except Exception:
+            pass
+    
+    # 兼容旧密码系统（没有用户账号时）
     pwd = get_setting("password", "")
     if not pwd:
-        return True  # 未设置密码，无需认证
+        return True
     token = request.headers.get("X-Auth-Token", "") or request.cookies.get("auth_token", "")
     return token == pwd
 
@@ -50,10 +103,9 @@ def check_auth():
 def auth_middleware():
     """认证中间件"""
     # 静态文件和登录接口不需要认证
-    if request.path.startswith("/static") or request.path == "/api/login":
+    if request.path.startswith("/static") or request.path in ["/api/login", "/api/user/login"]:
         return None
-    pwd = get_setting("password", "")
-    if pwd and not check_auth():
+    if not check_auth():
         if request.path.startswith("/api/"):
             return jsonify({"error": "未认证", "need_auth": True}), 401
         return render_template("login.html")
@@ -67,6 +119,29 @@ def index():
     resp.headers["Pragma"] = "no-cache"
     resp.headers["Expires"] = "0"
     return resp
+
+
+def get_user_zone_scope():
+    """获取当前用户的区域权限"""
+    user = get_current_user()
+    if not user:
+        return "all"
+    return user.get("zone_scope", "all")
+
+
+def filter_zones_by_scope(zones, zone_scope):
+    """根据区域权限过滤区域列表"""
+    if zone_scope == "all":
+        return zones
+    
+    # 定义区域映射（根据实际区域ID配置）
+    zone_mapping = {
+        "chuzhong": ["B"],  # 初中区域
+        "xiaoxue": ["A"],   # 小学区域
+    }
+    
+    allowed_zones = zone_mapping.get(zone_scope, [])
+    return [z for z in zones if z["id"] in allowed_zones]
 
 
 # ====== API: 认证 ======
@@ -84,6 +159,92 @@ def api_login():
     return jsonify({"success": False, "message": "密码错误"}), 403
 
 
+@app.route("/api/user/login", methods=["POST"])
+def api_user_login():
+    """用户登录"""
+    data = request.get_json(silent=True) or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+    
+    if not username or not password:
+        return jsonify({"success": False, "message": "请输入用户名和密码"}), 400
+    
+    # 自动补充邮箱后缀
+    if "@" not in username:
+        username = f"{username}@school.local"
+    
+    # 从PocketBase数据库验证
+    pb_db = os.path.join("pocketbase", "pb_data", "data.db")
+    if not os.path.exists(pb_db):
+        return jsonify({"success": False, "message": "用户数据库不存在"}), 500
+    
+    try:
+        conn = sqlite3.connect(pb_db)
+        conn.row_factory = sqlite3.Row
+        
+        # 密码验证
+        pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        user = conn.execute(
+            "SELECT * FROM app_users WHERE email=? AND password=?",
+            (username, pwd_hash)
+        ).fetchone()
+        conn.close()
+        
+        if not user:
+            return jsonify({"success": False, "message": "用户名或密码错误"}), 403
+        
+        resp = jsonify({
+            "success": True,
+            "user": {
+                "username": user["email"],
+                "display_name": user["name"],
+                "zone_scope": user["zone_scope"]
+            }
+        })
+        resp.set_cookie("auth_user", username, max_age=86400 * 30)
+        return resp
+        
+    except Exception as e:
+        logger.error(f"登录验证失败: {e}")
+        return jsonify({"success": False, "message": "登录失败"}), 500
+
+
+@app.route("/api/user/info", methods=["GET"])
+def api_user_info():
+    """获取当前用户信息"""
+    username = request.headers.get("X-Auth-User", "") or request.cookies.get("auth_user", "")
+    if not username:
+        return jsonify({"success": False, "error": "未登录"}), 401
+    
+    pb_db = os.path.join("pocketbase", "pb_data", "data.db")
+    if not os.path.exists(pb_db):
+        return jsonify({"success": False, "error": "用户数据库不存在"}), 500
+    
+    try:
+        conn = sqlite3.connect(pb_db)
+        conn.row_factory = sqlite3.Row
+        user = conn.execute(
+            "SELECT email, name, zone_scope FROM app_users WHERE email=?",
+            (username,)
+        ).fetchone()
+        conn.close()
+        
+        if user:
+            return jsonify({
+                "success": True,
+                "user": {
+                    "username": user["email"],
+                    "display_name": user["name"],
+                    "zone_scope": user["zone_scope"]
+                }
+            })
+    except Exception as e:
+        logger.error(f"获取用户信息失败: {e}")
+    
+    return jsonify({"success": False, "error": "用户不存在"}), 404
+
+
 # ====== API: 系统状态 ======
 @app.route("/api/status")
 def api_status():
@@ -92,12 +253,17 @@ def api_status():
     zones = conn.execute("SELECT * FROM zones ORDER BY sort_order").fetchall()
     schedules = conn.execute("SELECT id, name, is_active FROM schedules ORDER BY id").fetchall()
 
+    # 根据用户权限过滤区域
+    zone_scope = get_user_zone_scope()
+    zones_list = [dict(z) for z in zones]
+    zones_list = filter_zones_by_scope(zones_list, zone_scope)
+
     # 今日和明日状态
     today_str = date.today().isoformat()
     tomorrow_str = (date.today() + timedelta(days=1)).isoformat()
 
     zone_list = []
-    for z in zones:
+    for z in zones_list:
         # 今日状态
         today_status = engine.get_zone_status(z["id"], today_str)
         # 明日状态
@@ -153,8 +319,22 @@ def api_status():
 @app.route("/api/schedules", methods=["GET"])
 def api_schedules_list():
     zone_filter = request.args.get("zone_id")
+    
+    # 获取当前用户
+    user = get_current_user()
+    username = user["username"] if user else ""
+    zone_scope = user.get("zone_scope", "all") if user else "all"
+    
     conn = get_db()
-    schedules = conn.execute("SELECT * FROM schedules ORDER BY id").fetchall()
+    
+    # 根据用户权限查询课表
+    if zone_scope == "all":
+        # 管理员可以看到所有课表
+        schedules = conn.execute("SELECT * FROM schedules ORDER BY id").fetchall()
+    else:
+        # 普通用户只能看到自己创建的课表
+        schedules = conn.execute("SELECT * FROM schedules WHERE created_by=? ORDER BY id", (username,)).fetchall()
+    
     result = []
     for s in schedules:
         tasks = conn.execute(
@@ -168,9 +348,12 @@ def api_schedules_list():
             if zid not in zone_tasks:
                 zone_tasks[zid] = []
             zone_tasks[zid].append(dict(t))
-        # 如果指定了区域过滤，只返回包含该区域任务的课表
-        if zone_filter and zone_filter not in zone_tasks:
-            continue
+        # 如果指定了区域过滤，只返回该区域的任务（但不过滤课表）
+        if zone_filter:
+            zone_tasks_filtered = {}
+            if zone_filter in zone_tasks:
+                zone_tasks_filtered[zone_filter] = zone_tasks[zone_filter]
+            zone_tasks = zone_tasks_filtered
         result.append({
             "id": s["id"],
             "name": s["name"],
@@ -189,9 +372,13 @@ def api_schedule_create():
     if not name:
         return jsonify({"error": "课表名称不能为空"}), 400
 
+    # 获取当前用户
+    user = get_current_user()
+    created_by = user["username"] if user else ""
+
     conn = get_db()
     try:
-        conn.execute("INSERT INTO schedules (name, is_active) VALUES (?,0)", (name,))
+        conn.execute("INSERT INTO schedules (name, is_active, created_by) VALUES (?,0,?)", (name, created_by))
         conn.commit()
         add_log("INFO", "schedule", f"创建课表: {name}")
         return jsonify({"success": True, "message": f"课表'{name}'已创建"})
@@ -309,8 +496,14 @@ def api_task_delete(tid):
 def api_zones_list():
     conn = get_db()
     zones = conn.execute("SELECT * FROM zones ORDER BY sort_order").fetchall()
+    
+    # 根据用户权限过滤区域
+    zone_scope = get_user_zone_scope()
+    zones_list = [dict(z) for z in zones]
+    zones_list = filter_zones_by_scope(zones_list, zone_scope)
+    
     result = []
-    for z in zones:
+    for z in zones_list:
         result.append({
             "id": z["id"],
             "name": z["name"],
@@ -418,6 +611,31 @@ def api_bells_list():
         })
     conn.close()
     return jsonify({"success": True, "bells": result, "bindings": binding_map})
+
+
+@app.route("/api/bells/default", methods=["GET"])
+def api_bell_get_default():
+    """获取默认铃声"""
+    default_id = get_setting("default_bell_id", "0")
+    return jsonify({"success": True, "default_bell_id": int(default_id)})
+
+
+@app.route("/api/bells/default", methods=["POST"])
+def api_bell_set_default():
+    """设置默认铃声"""
+    data = request.get_json(silent=True) or {}
+    bell_id = data.get("bell_id", 0)
+    
+    if bell_id:
+        conn = get_db()
+        bell = conn.execute("SELECT * FROM bells WHERE id=?", (bell_id,)).fetchone()
+        conn.close()
+        if not bell:
+            return jsonify({"error": "铃声不存在"}), 400
+    
+    set_setting("default_bell_id", str(bell_id))
+    add_log("INFO", "bell", f"设置默认铃声: ID={bell_id}")
+    return jsonify({"success": True, "message": "默认铃声已设置"})
 
 
 @app.route("/api/prompts", methods=["GET"])
